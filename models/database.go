@@ -40,12 +40,14 @@ func NewDatabase() (*DB, error) {
 	}, nil
 }
 
+// Get all devices that shall be monitored
 func (db *DB) GetMonitoredDevices() []Device {
 	var devices []Device
 	db.gormDB.Where("record_calls = ?", true).Find(&devices)
 	return devices
 }
 
+// Get all configured AES recording devices
 func (db *DB) GetAESRecordingDevices() []AESRecordingDevice {
 	var devices []AESRecordingDevice
 	db.gormDB.Find(&devices)

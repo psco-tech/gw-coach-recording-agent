@@ -57,6 +57,8 @@ func (r *RTPReceiverTask) Start(portCount uint) error {
 	return nil
 }
 
+// GetRecorder gets the first recorder that isn't recording at the moment or returns an error if
+// the RecorderPool is exhausted
 func (r *RTPReceiverTask) GetRecorder() (Recorder, error) {
 	for _, r := range r.receivers {
 		if !r.record {
@@ -66,6 +68,7 @@ func (r *RTPReceiverTask) GetRecorder() (Recorder, error) {
 	return nil, fmt.Errorf("no idle RTP receiver available")
 }
 
+// GetAllRecorders returns a slice of all configured recorders
 func (r *RTPReceiverTask) GetAllRecorders() (recorders []Recorder) {
 	recorders = make([]Recorder, len(r.receivers))
 	for i, r := range r.receivers {
@@ -74,22 +77,26 @@ func (r *RTPReceiverTask) GetAllRecorders() (recorders []Recorder) {
 	return
 }
 
+// StartRecording starts the recording on this receiver to the filePath specified
 func (r *rtpReceiver) StartRecording(filePath string) error {
 	r.record = true
 	return nil
 }
 
+// StopRecording stops the recording on this receiver and closes the file
 func (r *rtpReceiver) StopRecording() error {
 	r.record = false
 	return nil
 }
 
+// Receive handles incoming RTP packets
 func (r *rtpReceiver) receive() {
 	log.Printf("Listening for incoming RTP data at %s\n", r.conn.LocalAddr().String())
 
 	r.wg.Add(1)
 	defer r.wg.Done()
 
+	// TODO implement receiving data
 }
 
 func (r *rtpReceiver) IsRecording() bool {

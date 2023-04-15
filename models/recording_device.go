@@ -2,6 +2,8 @@ package models
 
 import "gorm.io/gorm"
 
+// An AESRecordingDevice holds the configuration data for one
+// virtual station that is used internally to monitor the conversation
 type AESRecordingDevice struct {
 	gorm.Model
 

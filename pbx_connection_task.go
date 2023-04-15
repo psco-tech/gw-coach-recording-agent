@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// TODO move Recorder and RecorderPool out of here
 type Recorder interface {
 	// IsRecording returns true if the Recorder is currently recording to a file
 	IsRecording() bool
@@ -58,6 +59,7 @@ func NewPBXConnectionTask(ctx context.Context, wg *sync.WaitGroup) *PBXConnectio
 	}
 }
 
+// SetRecorderPool associates the PBX implementation with a RecorderPool
 func (p *PBXConnectionTask) SetRecorderPool(r RecorderPool) {
 	p.recorders = r
 }

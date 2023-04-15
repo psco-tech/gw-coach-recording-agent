@@ -6,6 +6,8 @@ import (
 	"gorm.io/gorm"
 )
 
+// A Device holds information on Extensions that shall be monitored/recorded by
+// this service
 type Device struct {
 	gorm.Model
 

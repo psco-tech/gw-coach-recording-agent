@@ -26,6 +26,7 @@ func (aes *AvayaAES) SetContext(ctx context.Context) {
 	aes.ctx = ctx
 }
 
+// Connect dials the connection and establishes an application session
 func (aes *AvayaAES) Connect(network, addr, applicationId, username, password string) (csta.Conn, error) {
 	cstaConn, err := csta.Dial(network, addr, aes.ctx, nil)
 	if err != nil {
@@ -79,6 +80,8 @@ func (aes *AvayaAES) Connect(network, addr, applicationId, username, password st
 	return cstaConn, nil
 }
 
+// applicationSessionTimer handles resetting the application session timer every so often
+// to prevent sessions from expiring
 func (aes *AvayaAES) applicationSessionTimer(ctx context.Context) {
 	timer := time.NewTicker(30 * time.Second)
 
@@ -119,6 +122,7 @@ func (aes *AvayaAES) ConnectionState() pbx.ConnectionState {
 	return pbx.ConnectionStateDisconnected
 }
 
+// Close closes the TCP connection after it stopped the application session
 func (aes *AvayaAES) Close() error {
 
 	if aes.conn.State() == csta.ConnectionStateActive {
@@ -137,6 +141,7 @@ func (aes *AvayaAES) Close() error {
 	return aes.conn.Close()
 }
 
+// MonitorStart gets hold of a device ID and calls MonitorStart on it
 func (aes *AvayaAES) MonitorStart(extension string) (mp pbx.MonitorPoint, err error) {
 	deviceId, err := aes.GetDeviceID(extension)
 	if err != nil {
@@ -190,6 +195,7 @@ func (aes *AvayaAES) MonitorStart(extension string) (mp pbx.MonitorPoint, err er
 	return
 }
 
+// GetDeviceID gets the internal device ID for an extension
 func (aes *AvayaAES) GetDeviceID(extension string) (deviceId string, err error) {
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -214,6 +220,8 @@ func (aes *AvayaAES) GetDeviceID(extension string) (deviceId string, err error) 
 	return
 }
 
+// RegisterTerminal will force-register a virtual station and instruct the Gateway to
+// send any audio data to the specified local endpoint
 func (aes *AvayaAES) RegisterTerminal(extension string, password string, localRtpEndpoint *net.UDPAddr) error {
 	// Get the actual device ID for this extension
 	deviceId, err := aes.GetDeviceID(extension)
