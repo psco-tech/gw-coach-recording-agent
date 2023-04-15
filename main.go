@@ -23,19 +23,14 @@ func main() {
 		tasksWg.Wait()
 	}()
 
+	// Read configuration file, if any and apply some defaults
 	err := readInConfiguration()
 	if err != nil {
 		log.Printf("Failed to read configuration: %s\n", err)
 		return
 	}
 
-	pbxConnectionTask := NewPBXConnectionTask(applicationContext, &tasksWg)
-	err = pbxConnectionTask.Start(viper.GetString("pbx_type"))
-	if err != nil {
-		log.Printf("Failed to start PBX connection Task: %s\n", err)
-		return
-	}
-
+	// Get RTP listening up and running
 	rtpReceiverTask := NewRTPReceiverTask(applicationContext, &tasksWg)
 	err = rtpReceiverTask.Start(viper.GetUint("rtp_receiver_count"))
 	if err != nil {
@@ -43,6 +38,17 @@ func main() {
 		return
 	}
 
+	// Connect to the PBX
+	pbxConnectionTask := NewPBXConnectionTask(applicationContext, &tasksWg)
+	pbxConnectionTask.SetRecorderPool(rtpReceiverTask)
+
+	err = pbxConnectionTask.Start(viper.GetString("pbx_type"))
+	if err != nil {
+		log.Printf("Failed to start PBX connection Task: %s\n", err)
+		return
+	}
+
+	// Setup application exit conditions
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
@@ -58,6 +64,7 @@ func readInConfiguration() error {
 	viper.AddConfigPath(".")
 
 	// Global defaults
+	// application_id is used in the StartApplicationSession CSTA/ACSE message
 	viper.SetDefault("application_id", "CRA")
 
 	err := viper.ReadInConfig()

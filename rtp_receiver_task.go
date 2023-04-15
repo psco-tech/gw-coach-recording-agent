@@ -21,6 +21,7 @@ type rtpReceiver struct {
 	record bool
 }
 
+// The RTPReceiverTask handles everythin related to receiving, decoding and recording RTP packets
 type RTPReceiverTask struct {
 	ctx       context.Context
 	wg        *sync.WaitGroup
@@ -34,6 +35,8 @@ func NewRTPReceiverTask(ctx context.Context, wg *sync.WaitGroup) *RTPReceiverTas
 	}
 }
 
+// Start will start the RTPReceiverTasks background operation
+// portCount sets the number of RTP receivers to instantiate
 func (r *RTPReceiverTask) Start(portCount uint) error {
 	log.Printf("Starting RTP Receiver Task\n")
 
@@ -54,16 +57,21 @@ func (r *RTPReceiverTask) Start(portCount uint) error {
 	return nil
 }
 
-func (r *RTPReceiverTask) GetReceiver() *rtpReceiver {
-	log.Printf("Looking for idle receiver\n")
-	for i, r := range r.receivers {
+func (r *RTPReceiverTask) GetRecorder() (Recorder, error) {
+	for _, r := range r.receivers {
 		if !r.record {
-			log.Printf("Receiver %d is idle\n", i)
-			return r
+			return r, nil
 		}
 	}
-	log.Printf("No idle receiver found!\n")
-	return nil
+	return nil, fmt.Errorf("no idle RTP receiver available")
+}
+
+func (r *RTPReceiverTask) GetAllRecorders() (recorders []Recorder) {
+	recorders = make([]Recorder, len(r.receivers))
+	for i, r := range r.receivers {
+		recorders[i] = r
+	}
+	return
 }
 
 func (r *rtpReceiver) StartRecording(filePath string) error {
@@ -82,4 +90,8 @@ func (r *rtpReceiver) receive() {
 	r.wg.Add(1)
 	defer r.wg.Done()
 
+}
+
+func (r *rtpReceiver) IsRecording() bool {
+	return r.record
 }

@@ -13,10 +13,34 @@ import (
 	"github.com/spf13/viper"
 )
 
+type Recorder interface {
+	// IsRecording returns true if the Recorder is currently recording to a file
+	IsRecording() bool
+
+	// StartRecording tries to create the file at filePath and start recording there
+	StartRecording(filePath string) error
+
+	// StopRecording stops an ongoing recording, it's a no-op if the Recorder is currently idle
+	StopRecording() error
+}
+
+// RecorderPool provides a set of recorders to the system to use
+type RecorderPool interface {
+	// GetRecorder tries to get an available (not currently recording)
+	// recorder for the system to use on a new recording session
+	GetRecorder() (Recorder, error)
+
+	// GetAllRecorders gets a list of all Recorders that are configured
+	GetAllRecorders() []Recorder
+}
+
+// The PBXConnectionTask handles everything associated with keeping the connection to the PBX
+// up and running as well as everything related to PBX communications and event handling
 type PBXConnectionTask struct {
-	ctx context.Context
-	sf  pbx.PBX
-	wg  *sync.WaitGroup
+	ctx       context.Context
+	sf        pbx.PBX
+	wg        *sync.WaitGroup
+	recorders RecorderPool
 }
 
 func NewPBXConnectionTask(ctx context.Context, wg *sync.WaitGroup) *PBXConnectionTask {
@@ -27,6 +51,12 @@ func NewPBXConnectionTask(ctx context.Context, wg *sync.WaitGroup) *PBXConnectio
 	}
 }
 
+func (p *PBXConnectionTask) SetRecorderPool(r RecorderPool) {
+	p.recorders = r
+}
+
+// Start will start the PBXConnectionTasks background operation
+// pbxType will set the vendor specific implementation to use for PBX communications
 func (p *PBXConnectionTask) Start(pbxType string) error {
 	log.Printf("Starting PBX Connection Task\n")
 	pbx.RegisterImplementation("osbiz", &osbiz.OSBiz{})
@@ -44,6 +74,8 @@ func (p *PBXConnectionTask) Start(pbxType string) error {
 	return nil
 }
 
+// The connectionHandler handles establishing a connection and session with the PBX
+// If the connection is lost it will retry, if the application is shutting down it will exit
 func (p *PBXConnectionTask) connectionHandler() {
 	defer p.wg.Done()
 	defer log.Printf("Stopped PBX connection handler\n")
@@ -90,6 +122,7 @@ func (p *PBXConnectionTask) connectionHandler() {
 	}
 }
 
+// The pbxHandler is the "main loop" that works on handling events and sending messages to the PBX
 func (p *PBXConnectionTask) pbxHandler() error {
 	defer log.Printf("Stopped PBX handler\n")
 
@@ -102,6 +135,8 @@ func (p *PBXConnectionTask) pbxHandler() error {
 	// Get devices to be monitored on startup
 	monitoredDevices := db.GetMonitoredDevices()
 	log.Printf("%d devices are configured to be monitored\n", len(monitoredDevices))
+
+	// TODO register recorders with the PBX
 
 	// Start monitoring the devices, save the cross reference ID to the DB
 	for _, d := range monitoredDevices {
