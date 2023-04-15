@@ -57,9 +57,10 @@ type NetworkEndpoint struct {
 }
 
 type RegisterTerminalRequest struct {
-	XMLName   xml.Name  `xml:"http://www.avaya.com/csta RegisterTerminalRequest"`
-	Device    DeviceID  `xml:"device"`
-	LoginInfo LoginInfo `xml:"loginInfo"`
+	XMLName        xml.Name        `xml:"http://www.avaya.com/csta RegisterTerminalRequest"`
+	Device         DeviceID        `xml:"device"`
+	LoginInfo      LoginInfo       `xml:"loginInfo"`
+	LocalMediaInfo *LocalMediaInfo `xml:"localMediaInfo,omitempty"`
 }
 
 func (RegisterTerminalRequest) Type() MessageType {

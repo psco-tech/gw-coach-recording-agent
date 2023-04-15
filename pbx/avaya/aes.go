@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"sync"
 	"time"
 
@@ -211,6 +212,45 @@ func (aes *AvayaAES) GetDeviceID(extension string) (deviceId string, err error) 
 	}
 
 	return
+}
+
+func (aes *AvayaAES) RegisterTerminal(extension string, password string, localRtpEndpoint *net.UDPAddr) error {
+	// Get the actual device ID for this extension
+	deviceId, err := aes.GetDeviceID(extension)
+	if err != nil {
+		return err
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	aes.conn.Request(csta.RegisterTerminalRequest{
+		Device: csta.DeviceID{Device: deviceId, TypeOfNumber: "other", MediaClass: "notKnown"},
+		LoginInfo: csta.LoginInfo{
+			ForceLogin:     true,
+			SharedControl:  false,
+			Password:       password,
+			MediaMode:      csta.MediaModeClient,
+			DependencyMode: csta.DependencyModeMain,
+		},
+		LocalMediaInfo: &csta.LocalMediaInfo{
+			RTPAddress: &csta.NetworkEndpoint{
+				Address: localRtpEndpoint.IP.String(),
+				Port:    localRtpEndpoint.Port,
+			},
+			RTCPAddress: &csta.NetworkEndpoint{
+				Address: localRtpEndpoint.IP.String(),
+				Port:    65000,
+			},
+			Codecs:         []string{"g711U"},
+			EncryptionList: []string{"none"},
+			PacketSize:     20,
+		},
+	}, func(c *csta.Context) {
+		defer wg.Done()
+	})
+
+	wg.Wait()
+	return nil
 }
 
 type monitorPoint struct {

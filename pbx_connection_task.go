@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log"
+	"net"
 	"sync"
 	"time"
 
@@ -25,6 +27,8 @@ type Recorder interface {
 
 	// StopRecording stops an ongoing recording, it's a no-op if the Recorder is currently idle
 	StopRecording() error
+
+	LocalAddr() net.Addr
 }
 
 // RecorderPool provides a set of recorders to the system to use
@@ -146,11 +150,28 @@ func (p *PBXConnectionTask) pbxHandler(cstaConn csta.Conn) error {
 		return err
 	}
 
+	// TODO this is janky
+	if viper.GetString("pbx_type") == "avaya_aes" {
+		recordingDevices := db.GetAESRecordingDevices()
+		log.Printf("%d AES recording devices configured\n", len(recordingDevices))
+
+		recorders := p.recorders.GetAllRecorders()
+		if len(recorders) < len(recordingDevices) {
+			return fmt.Errorf("not enough recorders configured to service all recording devices")
+		}
+
+		for i, rd := range recordingDevices {
+			log.Printf("Registering AES recording device <%s> with local recording endpoint <%s>", rd.Extension, recorders[i].LocalAddr().String())
+			err := (p.sf).(*avaya.AvayaAES).RegisterTerminal(rd.Extension, rd.Password, recorders[i].LocalAddr().(*net.UDPAddr))
+			if err != nil {
+				log.Printf("Failed to register AES recording device: %s\n", err)
+			}
+		}
+	}
+
 	// Get devices to be monitored on startup
 	monitoredDevices := db.GetMonitoredDevices()
 	log.Printf("%d devices are configured to be monitored\n", len(monitoredDevices))
-
-	// TODO register recorders with the PBX
 
 	// Start monitoring the devices, save the cross reference ID to the DB
 	for _, d := range monitoredDevices {

@@ -41,7 +41,7 @@ func (r *RTPReceiverTask) Start(portCount uint) error {
 	log.Printf("Starting RTP Receiver Task\n")
 
 	log.Printf("Starting %d RTP listeners\n", portCount)
-	r.receivers = make([]*rtpReceiver, portCount)
+	r.receivers = make([]*rtpReceiver, 0)
 	for i := 0; i < int(portCount); i++ {
 		l, err := net.ListenPacket("udp4", fmt.Sprintf("%s:0", viper.GetString("rtp_receiver_addr")))
 		if err != nil {
@@ -94,4 +94,8 @@ func (r *rtpReceiver) receive() {
 
 func (r *rtpReceiver) IsRecording() bool {
 	return r.record
+}
+
+func (r *rtpReceiver) LocalAddr() net.Addr {
+	return r.conn.LocalAddr()
 }

@@ -30,7 +30,7 @@ func NewDatabase() (*DB, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	err = db.AutoMigrate(&Device{})
+	err = db.AutoMigrate(&Device{}, &AESRecordingDevice{})
 	if err != nil {
 		return nil, fmt.Errorf("database migration failed: %w", err)
 	}
@@ -43,6 +43,12 @@ func NewDatabase() (*DB, error) {
 func (db *DB) GetMonitoredDevices() []Device {
 	var devices []Device
 	db.gormDB.Where("record_calls = ?", true).Find(&devices)
+	return devices
+}
+
+func (db *DB) GetAESRecordingDevices() []AESRecordingDevice {
+	var devices []AESRecordingDevice
+	db.gormDB.Find(&devices)
 	return devices
 }
 
