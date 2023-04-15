@@ -15,9 +15,6 @@ type Device struct {
 	// A Description for management purposes
 	Description string
 
-	// The internal device ID this device can be accessed through on the PBX
-	DeviceID string
-
 	// Should this device be recorded?
 	RecordCalls bool
 
