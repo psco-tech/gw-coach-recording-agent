@@ -39,12 +39,13 @@ type Conn interface {
 	State() ConnectionState
 	Request(request Message, responseHandler HandleFunc) error
 	Close() error
+	Closed() <-chan struct{}
 
 	Handle(messageType MessageType, responseHandler HandleFunc)
 	RemoveHandler(messageType MessageType)
 
 	// Application Session Services
-	StartApplicationSession(applicationId string, applicationSpecificInfo interface{}, callbacks ...HandleFunc) error
+	StartApplicationSession(applicationId string, applicationSpecificInfo interface{}, protocolVersion string, callbacks ...HandleFunc) error
 
 	// Monitoring Services
 	MonitorStart(monitorObject CSTAObject, monitorType MonitorType, callback ...HandleFunc) error
@@ -57,7 +58,6 @@ type ConnectionOptions struct {
 type cstaConn struct {
 	mutex        sync.Mutex
 	ctx          context.Context
-	close        context.CancelFunc
 	lastInvokeId uint
 	timeout      time.Duration
 	options      *ConnectionOptions
@@ -65,6 +65,7 @@ type cstaConn struct {
 	rw           *bufio.ReadWriter
 	state        ConnectionState
 	sessionId    string
+	closed       context.CancelFunc
 
 	handlers     map[MessageType]HandleFunc
 	transactions map[uint]HandleFunc
@@ -116,6 +117,12 @@ func (c *cstaConn) Read() (uint, Message, error) {
 	cstaHeader := make([]byte, 8)
 	_, err := io.ReadFull(c.rw, cstaHeader)
 	if err != nil {
+		// Pass down EOF
+		if errors.Is(err, io.EOF) {
+			c.state = ConnectionStateClosed
+			return 0, nil, err
+		}
+		c.state = ConnectionStateError
 		return 0, nil, fmt.Errorf("failed to read CSTA header: %w", err)
 	}
 
@@ -170,12 +177,12 @@ func (c *cstaConn) Read() (uint, Message, error) {
 }
 
 // Dial establishes a new connection to a switching function with default timeout paramters
-func Dial(network string, address string, options *ConnectionOptions) (Conn, error) {
-	return DialTimeout(network, address, defaultDialTimeout, options)
+func Dial(network string, address string, ctx context.Context, options *ConnectionOptions) (Conn, error) {
+	return DialTimeout(network, address, defaultDialTimeout, ctx, options)
 }
 
 // DialTimeout establishes a new connection to a switching function
-func DialTimeout(network string, address string, timeout time.Duration, options *ConnectionOptions) (Conn, error) {
+func DialTimeout(network string, address string, timeout time.Duration, ctx context.Context, options *ConnectionOptions) (Conn, error) {
 	if options == nil {
 		options = &ConnectionOptions{}
 	}
@@ -186,12 +193,12 @@ func DialTimeout(network string, address string, timeout time.Duration, options 
 		return nil, fmt.Errorf("failed to establish a connection with the switching function: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, closed := context.WithCancel(ctx)
 
 	conn := cstaConn{
 		timeout:      timeout,
 		ctx:          ctx,
-		close:        cancel,
+		closed:       closed,
 		options:      options,
 		conn:         tcpConn, // Keep a reference to the underlying net.Conn
 		rw:           bufio.NewReadWriter(bufio.NewReader(tcpConn), bufio.NewWriter(tcpConn)),
@@ -208,10 +215,14 @@ func (c *cstaConn) messageHandler() {
 	for {
 		invokeId, message, err := c.Read()
 		if err != nil {
-			log.Printf("Failed to Read() from CSTA connection: %s\n", err)
 			if errors.Is(err, io.EOF) {
+				log.Printf("PBX connection lost: %s\n", err)
+				c.state = ConnectionStateClosed
+				c.Close()
 				return
 			}
+			c.state = ConnectionStateError
+			log.Printf("Failed to Read() from CSTA connection: %s\n", err)
 			continue
 		}
 
@@ -253,18 +264,18 @@ type Response struct {
 }
 
 func (c *cstaConn) Close() error {
+	log.Printf("Closing CSTA connection\n")
 	if c.conn != nil {
 		c.conn.Close()
-	}
-
-	if c.close != nil {
-		c.close()
 	}
 
 	// Preserve the error state
 	if c.state != ConnectionStateError {
 		c.state = ConnectionStateClosed
 	}
+
+	// Notify listeners that we're closed
+	c.closed()
 
 	return nil
 }
@@ -299,4 +310,8 @@ func dispatchCallbacks(ctx *Context, callbacks ...HandleFunc) {
 	for _, cb := range callbacks {
 		cb(ctx)
 	}
+}
+
+func (c *cstaConn) Closed() <-chan struct{} {
+	return c.ctx.Done()
 }

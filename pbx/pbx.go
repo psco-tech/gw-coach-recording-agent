@@ -1,8 +1,10 @@
 package pbx
 
 import (
+	"context"
 	"errors"
 
+	"github.com/psco-tech/gw-coach-recording-agent/csta"
 	"github.com/spf13/viper"
 )
 
@@ -24,9 +26,10 @@ const (
 )
 
 type PBX interface {
-	Connect(network, addr, applicationId, username, password string) error
+	Connect(network, addr, applicationId, username, password string) (csta.Conn, error)
 	ConnectionState() ConnectionState
 	MonitorStart(deviceId string) (monitorPoint MonitorPoint, err error)
+	SetContext(ctx context.Context)
 	Close() error
 }
 
@@ -38,12 +41,13 @@ func RegisterImplementation(id string, implementation PBX) {
 	implementations[id] = implementation
 }
 
-func New(implementationId string) (PBX, error) {
+func New(implementationId string, ctx context.Context) (PBX, error) {
 	if implementations == nil {
 		return nil, errors.New("no PBX implementations registered")
 	}
 
 	if impl, ok := implementations[implementationId]; ok {
+		impl.SetContext(ctx)
 		return impl, nil
 	}
 	return nil, errors.New("unknown PBX implementation ID")

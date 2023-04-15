@@ -1,6 +1,7 @@
 package osbiz
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sync"
@@ -12,14 +13,20 @@ import (
 const defaultEventBufferSize = 100
 
 type OSBiz struct {
+	ctx           context.Context
+	sessionId     string
 	conn          csta.Conn
 	monitorPoints map[string]*monitorPoint
 }
 
-func (pbx *OSBiz) Connect(network, addr, applicationId, username, password string) error {
-	cstaConn, err := csta.Dial(network, addr, nil)
+func (pbx *OSBiz) SetContext(ctx context.Context) {
+	pbx.ctx = ctx
+}
+
+func (pbx *OSBiz) Connect(network, addr, applicationId, username, password string) (csta.Conn, error) {
+	cstaConn, err := csta.Dial(network, addr, pbx.ctx, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	pbx.setupHandlers(cstaConn)
@@ -35,20 +42,25 @@ func (pbx *OSBiz) Connect(network, addr, applicationId, username, password strin
 	}{
 		User:     username,
 		Password: password,
-	}, func(ctx *csta.Context) {
-		if ctx.Error != nil {
-			err = ctx.Error
-		}
-		wg.Done()
-	})
+	}, "http://www.ecma-international.org/standards/ecma-323/csta/ed4",
+		func(ctx *csta.Context) {
+			if ctx.Error != nil {
+				err = ctx.Error
+			}
+			if r, ok := ctx.Message.(*csta.StartApplicationSessionPosResponse); ok {
+				log.Printf("Application session started with session id <%s>\n", r.SessionID)
+				pbx.sessionId = r.SessionID
+			}
+			wg.Done()
+		})
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	wg.Wait()
 
-	return nil
+	return cstaConn, nil
 }
 
 func (pbx *OSBiz) getMonitorPoint(crossReferenceId string) *monitorPoint {
@@ -93,6 +105,16 @@ func (osbiz *OSBiz) ConnectionState() pbx.ConnectionState {
 }
 
 func (pbx *OSBiz) Close() error {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	pbx.conn.Request(csta.StopApplicationSession{
+		SessionID:        pbx.sessionId,
+		SessionEndReason: "Application Shutdown",
+	}, func(c *csta.Context) {
+		wg.Done()
+	})
+	wg.Wait()
+
 	return pbx.conn.Close()
 }
 

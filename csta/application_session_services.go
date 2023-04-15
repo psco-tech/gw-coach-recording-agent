@@ -7,15 +7,25 @@ import (
 )
 
 const (
-	MessageTypeStartApplicationSession            MessageType = "StartApplicationSession"
-	MessageTypeStartApplicationSessionPosResponse MessageType = "StartApplicationSessionPosResponse"
-	MessageTypeStartApplicationSessionNegResponse MessageType = "StartApplicationSessionNegResponse"
+	MessageTypeStartApplicationSession                 MessageType = "StartApplicationSession"
+	MessageTypeStopApplicationSession                  MessageType = "StopApplicationSession"
+	MessageTypeStartApplicationSessionPosResponse      MessageType = "StartApplicationSessionPosResponse"
+	MessageTypeStopApplicationSessionPosResponse       MessageType = "StopApplicationSessionPosResponse"
+	MessageTypeStartApplicationSessionNegResponse      MessageType = "StartApplicationSessionNegResponse"
+	MessageTypeResetApplicationSessionTimer            MessageType = "ResetApplicationSessionTimer"
+	MessageTypeResetApplicationSessionTimerPosResponse MessageType = "ResetApplicationSessionTimerPosResponse"
+	MessageTypeResetApplicationSessionTimerNegResponse MessageType = "ResetApplicationSessionTimerNegResponse"
 )
 
 func init() {
 	registerMessageType(MessageTypeStartApplicationSession, reflect.TypeOf(StartApplicationSession{}))
+	registerMessageType(MessageTypeStopApplicationSession, reflect.TypeOf(StopApplicationSession{}))
 	registerMessageType(MessageTypeStartApplicationSessionPosResponse, reflect.TypeOf(StartApplicationSessionPosResponse{}))
+	registerMessageType(MessageTypeStopApplicationSessionPosResponse, reflect.TypeOf(StopApplicationSessionPosResponse{}))
 	registerMessageType(MessageTypeStartApplicationSessionNegResponse, reflect.TypeOf(StartApplicationSessionNegResponse{}))
+	registerMessageType(MessageTypeResetApplicationSessionTimer, reflect.TypeOf(ResetApplicationSessionTimer{}))
+	registerMessageType(MessageTypeResetApplicationSessionTimerPosResponse, reflect.TypeOf(ResetApplicationSessionTimerPosResponse{}))
+	registerMessageType(MessageTypeResetApplicationSessionTimerNegResponse, reflect.TypeOf(ResetApplicationSessionTimerNegResponse{}))
 }
 
 type StartApplicationSession struct {
@@ -28,6 +38,24 @@ type StartApplicationSession struct {
 
 func (m StartApplicationSession) Type() MessageType {
 	return MessageTypeStartApplicationSession
+}
+
+type StopApplicationSession struct {
+	XMLName          xml.Name `xml:"http://www.ecma-international.org/standards/ecma-354/appl_session StopApplicationSession"`
+	SessionID        string   `xml:"sessionID"`
+	SessionEndReason string   `xml:"sessionEndReason>appEndReason"`
+}
+
+func (m StopApplicationSession) Type() MessageType {
+	return MessageTypeStopApplicationSession
+}
+
+type StopApplicationSessionPosResponse struct {
+	XMLName xml.Name `xml:"http://www.ecma-international.org/standards/ecma-354/appl_session StopApplicationSessionPosResponse"`
+}
+
+func (StopApplicationSessionPosResponse) Type() MessageType {
+	return MessageTypeStopApplicationSessionPosResponse
 }
 
 type StartApplicationSessionPosResponse struct {
@@ -49,7 +77,34 @@ func (m StartApplicationSessionNegResponse) Type() MessageType {
 	return MessageTypeStartApplicationSessionNegResponse
 }
 
-func (c *cstaConn) StartApplicationSession(applicationId string, applicationSpecificInfo interface{}, callback ...HandleFunc) error {
+type ResetApplicationSessionTimer struct {
+	XMLName                  xml.Name `xml:"http://www.ecma-international.org/standards/ecma-354/appl_session ResetApplicationSessionTimer"`
+	SessionID                string   `xml:"sessionID"`
+	RequestedSessionDuration uint     `xml:"requestedSessionDuration"`
+}
+
+func (ResetApplicationSessionTimer) Type() MessageType {
+	return MessageTypeResetApplicationSessionTimer
+}
+
+type ResetApplicationSessionTimerPosResponse struct {
+	XMLName               xml.Name `xml:"http://www.ecma-international.org/standards/ecma-354/appl_session ResetApplicationSessionTimerPosResponse"`
+	ActualSessionDuration uint     `xml:"actualSessionDuration"`
+}
+
+func (ResetApplicationSessionTimerPosResponse) Type() MessageType {
+	return MessageTypeResetApplicationSessionTimerPosResponse
+}
+
+type ResetApplicationSessionTimerNegResponse struct {
+	XMLName xml.Name `xml:"http://www.ecma-international.org/standards/ecma-354/appl_session ResetApplicationSessionTimerNegResponse"`
+}
+
+func (ResetApplicationSessionTimerNegResponse) Type() MessageType {
+	return MessageTypeResetApplicationSessionTimerNegResponse
+}
+
+func (c *cstaConn) StartApplicationSession(applicationId string, applicationSpecificInfo interface{}, protocolVersion string, callback ...HandleFunc) error {
 	if c.state != ConnectionStateIdle {
 		return fmt.Errorf("connection is not idle")
 	}
@@ -60,7 +115,7 @@ func (c *cstaConn) StartApplicationSession(applicationId string, applicationSpec
 	err := c.Request(StartApplicationSession{
 		ApplicationID:            applicationId,
 		RequestedSessionDuration: defaultSessionDuration,
-		ProtocolVersion:          "http://www.ecma-international.org/standards/ecma-323/csta/ed4",
+		ProtocolVersion:          protocolVersion,
 		ApplicationSpecificInfo:  applicationSpecificInfo,
 	}, func(ctx *Context) {
 		switch ctx.Message.Type() {

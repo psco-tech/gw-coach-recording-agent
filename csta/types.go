@@ -8,6 +8,8 @@ type CSTAObject struct {
 type DeviceID struct {
 	Device       string `xml:",chardata"`
 	TypeOfNumber string `xml:"typeOfNumber,attr,omitempty"`
+	MediaClass   string `xml:"mediaClass,attr,omitempty"`
+	BitRate      string `xml:"bitRate,attr,omitempty"`
 	// TODO implement the rest as needed
 }
 

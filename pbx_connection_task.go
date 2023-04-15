@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
+	"io"
 	"log"
 	"sync"
 	"time"
 
+	"github.com/psco-tech/gw-coach-recording-agent/csta"
 	"github.com/psco-tech/gw-coach-recording-agent/models"
 	"github.com/psco-tech/gw-coach-recording-agent/pbx"
 	"github.com/psco-tech/gw-coach-recording-agent/pbx/avaya"
@@ -62,7 +65,7 @@ func (p *PBXConnectionTask) Start(pbxType string) error {
 	pbx.RegisterImplementation("osbiz", &osbiz.OSBiz{})
 	pbx.RegisterImplementation("avaya_aes", &avaya.AvayaAES{})
 
-	sf, err := pbx.New(pbxType)
+	sf, err := pbx.New(pbxType, p.ctx)
 	if err != nil {
 		return err
 	}
@@ -88,11 +91,12 @@ func (p *PBXConnectionTask) connectionHandler() {
 	for {
 		select {
 		case <-p.ctx.Done():
+			log.Printf("Closing PBX Session\n")
 			p.sf.Close()
 			return
 		default:
 			log.Printf("Trying to connect to PBX (%s)\n", viper.GetString("pbx_address"))
-			err := p.sf.Connect(
+			cstaConn, err := p.sf.Connect(
 				"tcp",
 				viper.GetString("pbx_address"),
 				viper.GetString("application_id"),
@@ -109,12 +113,22 @@ func (p *PBXConnectionTask) connectionHandler() {
 
 			log.Printf("Successfully connected to PBX\n")
 
-			err = p.pbxHandler()
+			err = p.pbxHandler(cstaConn)
 			if err != nil {
-				log.Printf("PBX error: %s\n", err)
-
+				if !errors.Is(err, io.EOF) {
+					log.Printf("PBX error: %s\n", err)
+				} else {
+					log.Printf("PBX connection closed: %s\n", err)
+				}
+				log.Printf("Connection retry in %ds\n", connectionRetryTimeout/time.Second)
+				// TODO handle if shutdown of application was requested during connectionRetryTimout
 				time.Sleep(connectionRetryTimeout)
 				continue
+			}
+
+			if p.sf != nil {
+				log.Printf("Closing PBX Session\n")
+				p.sf.Close()
 			}
 
 			return
@@ -123,7 +137,7 @@ func (p *PBXConnectionTask) connectionHandler() {
 }
 
 // The pbxHandler is the "main loop" that works on handling events and sending messages to the PBX
-func (p *PBXConnectionTask) pbxHandler() error {
+func (p *PBXConnectionTask) pbxHandler(cstaConn csta.Conn) error {
 	defer log.Printf("Stopped PBX handler\n")
 
 	// Get access to the persistence layer
@@ -140,9 +154,9 @@ func (p *PBXConnectionTask) pbxHandler() error {
 
 	// Start monitoring the devices, save the cross reference ID to the DB
 	for _, d := range monitoredDevices {
-		mp, err := p.sf.MonitorStart(d.DeviceID)
+		mp, err := p.sf.MonitorStart(d.Extension)
 		if err != nil {
-			log.Printf("Failed to start monitoring <%s>: %s", d.DeviceID, err)
+			log.Printf("Failed to start monitoring <%s>: %s", d.Extension, err)
 			continue
 		}
 
@@ -150,6 +164,10 @@ func (p *PBXConnectionTask) pbxHandler() error {
 		db.Save(d)
 	}
 
-	<-p.ctx.Done()
-	return nil
+	select {
+	case <-p.ctx.Done():
+		return nil
+	case <-cstaConn.Closed():
+		return io.EOF
+	}
 }

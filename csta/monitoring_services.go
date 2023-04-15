@@ -16,7 +16,7 @@ func init() {
 }
 
 type MonitorStart struct {
-	XMLName       xml.Name    `xml:"http://www.ecma-international.org/standards/ecma-323/csta/ed4 MonitorStart"`
+	XMLName       xml.Name    `xml:"MonitorStart"`
 	MonitorObject CSTAObject  `xml:"monitorObject"`
 	MonitorType   MonitorType `xml:"monitorType"`
 }
@@ -26,7 +26,7 @@ func (m MonitorStart) Type() MessageType {
 }
 
 type MonitorStartResponse struct {
-	XMLName           xml.Name `xml:"http://www.ecma-international.org/standards/ecma-323/csta/ed4 MonitorStartResponse"`
+	XMLName           xml.Name `xml:"MonitorStartResponse"`
 	MonitorCrossRefID string   `xml:"monitorCrossRefID"`
 }
 

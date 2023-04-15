@@ -81,7 +81,7 @@ func TestStartApplicationSession(t *testing.T) {
 	}{
 		Username: "username",
 		Password: "password",
-	})
+	}, "http://www.ecma-international.org/standards/ecma-323/csta/ed4")
 
 	if err != nil {
 		t.Log(err)
