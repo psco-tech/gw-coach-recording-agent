@@ -187,8 +187,13 @@ func DialTimeout(network string, address string, timeout time.Duration, ctx cont
 		options = &ConnectionOptions{}
 	}
 
+	dialContext, cancelDialing := context.WithTimeout(ctx, timeout)
+	defer cancelDialing()
+
+	var cstaDialer net.Dialer
+
 	// Establish a connection with the switching function
-	tcpConn, err := net.DialTimeout(network, address, timeout)
+	tcpConn, err := cstaDialer.DialContext(dialContext, network, address)
 	if err != nil {
 		return nil, fmt.Errorf("failed to establish a connection with the switching function: %w", err)
 	}
