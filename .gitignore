@@ -1,3 +1,4 @@
 config.db
 call_recording_agent.yaml
 *.pcapng
+*.exe
