@@ -27,8 +27,8 @@ func (aes *AvayaAES) SetContext(ctx context.Context) {
 }
 
 // Connect dials the connection and establishes an application session
-func (aes *AvayaAES) Connect(network, addr, applicationId, username, password string) (csta.Conn, error) {
-	cstaConn, err := csta.Dial(network, addr, aes.ctx, nil)
+func (aes *AvayaAES) Connect() (csta.Conn, error) {
+	cstaConn, err := csta.Dial("tcp", viper.GetString("avaya_aes.server_address"), aes.ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func (aes *AvayaAES) Connect(network, addr, applicationId, username, password st
 	aes.conn = cstaConn
 
 	wg.Add(1)
-	err = cstaConn.StartApplicationSession(applicationId, struct {
+	err = cstaConn.StartApplicationSession(viper.GetString("application_id"), struct {
 		SessionLoginInfo struct {
 			Username            string `xml:"userName"`
 			Password            string `xml:"password"`
@@ -52,8 +52,8 @@ func (aes *AvayaAES) Connect(network, addr, applicationId, username, password st
 			Password            string "xml:\"password\""
 			SessionCleanupDelay int    "xml:\"sessionCleanupDelay\""
 		}{
-			Username:            username,
-			Password:            password,
+			Username:            viper.GetString("avaya_aes.username"),
+			Password:            viper.GetString("avaya_aes.password"),
 			SessionCleanupDelay: 60,
 		},
 	},
@@ -218,6 +218,11 @@ func (aes *AvayaAES) GetDeviceID(extension string) (deviceId string, err error) 
 	}
 
 	return
+}
+
+func (a *AvayaAES) Serve() error {
+	defer a.Close()
+	return nil
 }
 
 // RegisterTerminal will force-register a virtual station and instruct the Gateway to

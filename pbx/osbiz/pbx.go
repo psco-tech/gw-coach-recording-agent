@@ -8,6 +8,7 @@ import (
 
 	"github.com/psco-tech/gw-coach-recording-agent/csta"
 	"github.com/psco-tech/gw-coach-recording-agent/pbx"
+	"github.com/spf13/viper"
 )
 
 const defaultEventBufferSize = 100
@@ -23,8 +24,13 @@ func (pbx *OSBiz) SetContext(ctx context.Context) {
 	pbx.ctx = ctx
 }
 
-func (pbx *OSBiz) Connect(network, addr, applicationId, username, password string) (csta.Conn, error) {
-	cstaConn, err := csta.Dial(network, addr, pbx.ctx, nil)
+func (pbx *OSBiz) Serve() error {
+	defer pbx.Close()
+	return nil
+}
+
+func (pbx *OSBiz) Connect() (csta.Conn, error) {
+	cstaConn, err := csta.Dial("tcp", viper.GetString("osbiz.server_address"), pbx.ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -36,12 +42,12 @@ func (pbx *OSBiz) Connect(network, addr, applicationId, username, password strin
 	pbx.conn = cstaConn
 
 	wg.Add(1)
-	err = cstaConn.StartApplicationSession(applicationId, struct {
+	err = cstaConn.StartApplicationSession(viper.GetString("application_id"), struct {
 		User     string `xml:"user"`
 		Password string `xml:"password"`
 	}{
-		User:     username,
-		Password: password,
+		User:     viper.GetString("osbiz.username"),
+		Password: viper.GetString("osbiz.password"),
 	}, "http://www.ecma-international.org/standards/ecma-323/csta/ed4",
 		func(ctx *csta.Context) {
 			if ctx.Error != nil {

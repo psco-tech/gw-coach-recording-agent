@@ -26,10 +26,12 @@ const (
 )
 
 type PBX interface {
-	Connect(network, addr, applicationId, username, password string) (csta.Conn, error)
+	Connect() (csta.Conn, error)
+
 	ConnectionState() ConnectionState
 	MonitorStart(deviceId string) (monitorPoint MonitorPoint, err error)
 	SetContext(ctx context.Context)
+	Serve() error
 	Close() error
 }
 
@@ -51,4 +53,7 @@ func New(implementationId string, ctx context.Context) (PBX, error) {
 		return impl, nil
 	}
 	return nil, errors.New("unknown PBX implementation ID")
+}
+
+type Connection struct {
 }
