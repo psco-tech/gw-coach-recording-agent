@@ -36,6 +36,13 @@ type CalledDeviceID struct {
 	ExtendedDeviceID
 }
 
+type NetworkCallingDeviceID struct {
+	ExtendedDeviceID
+}
+type NetworkCalledDeviceID struct {
+	ExtendedDeviceID
+}
+
 type LocalDeviceID struct {
 	Device       string `xml:",chardata"`
 	TypeOfNumber string `xml:"typeOfNumber,attr"`

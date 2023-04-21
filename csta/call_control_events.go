@@ -18,6 +18,7 @@ func init() {
 	registerMessageType(MessageTypeOriginatedEvent, reflect.TypeOf(OriginatedEvent{}))
 	registerMessageType(MessageTypeDeliveredEvent, reflect.TypeOf(DeliveredEvent{}))
 	registerMessageType(MessageTypeEstablishedEvent, reflect.TypeOf(EstablishedEvent{}))
+	registerMessageType(MessageTypeConnectionClearedEvent, reflect.TypeOf(ConnectionClearedEvent{}))
 }
 
 type ServiceInitiatedEvent struct {
@@ -57,6 +58,7 @@ type DeliveredEvent struct {
 	CalledDevice          SubjectDeviceID     `xml:"calledDevice"`
 	LastRedirectionDevice RedirectionDeviceID `xml:"lastRedirectionDevice"`
 	LocalConnectionInfo   string              `xml:"localConnectionInfo"`
+	CallLinkageData       *CallLinkageData    `xml:"callLinkageData,omitempty"`
 	Cause                 string              `xml:"cause"`
 }
 
@@ -74,8 +76,22 @@ type EstablishedEvent struct {
 	LastRedirectionDevice RedirectionDeviceID `xml:"lastRedirectionDevice"`
 	LocalConnectionInfo   string              `xml:"localConnectionInfo"`
 	Cause                 string              `xml:"cause"`
+	CallLinkageData       *CallLinkageData    `xml:"callLinkageData,omitempty"`
 }
 
 func (EstablishedEvent) Type() MessageType {
 	return MessageTypeEstablishedEvent
+}
+
+type ConnectionClearedEvent struct {
+	XMLName             xml.Name        `xml:"ConnectionClearedEvent"`
+	MonitorCrossRefID   string          `xml:"monitorCrossRefID"`
+	DroppedConnection   ConnectionID    `xml:"droppedConnection"`
+	ReleasingDevice     SubjectDeviceID `xml:"releasingDevice"`
+	LocalConnectionInfo string          `xml:"localConnectionInfo"`
+	Cause               string          `xml:"cause"`
+}
+
+func (ConnectionClearedEvent) Type() MessageType {
+	return MessageTypeConnectionClearedEvent
 }
