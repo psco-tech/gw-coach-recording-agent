@@ -34,3 +34,6 @@ func (m SystemStatusResponse) Type() MessageType {
 func acknowledgeSystemStatus(c *Context) {
 	c.conn.Write(c.InvokeID, SystemStatusResponse{})
 }
+
+func ignoreMessage(c *Context) {
+}

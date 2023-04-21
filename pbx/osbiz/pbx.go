@@ -83,21 +83,23 @@ func (pbx *OSBiz) Connect() (csta.Conn, error) {
 		Password: viper.GetString("osbiz.password"),
 	}, "http://www.ecma-international.org/standards/ecma-323/csta/ed4",
 		func(ctx *csta.Context) {
+			defer wg.Done()
 			if ctx.Error != nil {
 				err = ctx.Error
+				log.Printf("Error starting application session: %s\n", err)
+				return
 			}
 			if r, ok := ctx.Message.(*csta.StartApplicationSessionPosResponse); ok {
 				log.Printf("Application session started with session id <%s>\n", r.SessionID)
 				pbx.sessionId = r.SessionID
 			}
-			wg.Done()
 		})
+
+	wg.Wait()
 
 	if err != nil {
 		return nil, err
 	}
-
-	wg.Wait()
 
 	return cstaConn, nil
 }

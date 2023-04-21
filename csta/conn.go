@@ -18,9 +18,11 @@ import (
 
 const defaultDialTimeout = 30 * time.Second
 const defaultSessionDuration = 60
+const requestTimeout = 10 * time.Second
 
 var defaultHandlers = map[MessageType]HandleFunc{
-	MessageTypeSystemStatus: acknowledgeSystemStatus,
+	MessageTypeSystemStatus:                      acknowledgeSystemStatus,
+	MessageTypeStopApplicationSessionPosResponse: ignoreMessage,
 }
 
 type ConnectionState int
@@ -67,8 +69,9 @@ type cstaConn struct {
 	sessionId    string
 	closed       context.CancelFunc
 
-	handlers     map[MessageType]HandleFunc
-	transactions map[uint]HandleFunc
+	handlers            map[MessageType]HandleFunc
+	transactions        map[uint]HandleFunc
+	transactionTimeouts map[uint]*time.Timer
 }
 
 type Context struct {
@@ -242,6 +245,11 @@ func (c *cstaConn) messageHandler() {
 			go tx(messageContext)
 			delete(c.transactions, invokeId)
 
+			if timeout, ok := c.transactionTimeouts[invokeId]; ok {
+				timeout.Stop()
+				delete(c.transactionTimeouts, invokeId)
+			}
+
 			continue
 		}
 
@@ -291,6 +299,35 @@ func (c *cstaConn) Request(request Message, responseHandler HandleFunc) error {
 
 	// Register a handler for the response
 	c.transactions[requestId] = responseHandler
+
+	timeout := time.NewTimer(requestTimeout)
+	if c.transactionTimeouts == nil {
+		c.transactionTimeouts = make(map[uint]*time.Timer)
+	}
+	c.transactionTimeouts[requestId] = timeout
+
+	// Handle timeouts/cancellation of requests
+	go func() {
+		// Wait for timeout or context close
+		var cancelCause string
+		select {
+		case <-timeout.C:
+			cancelCause = "transaction timed out"
+		case <-c.ctx.Done():
+			cancelCause = "transaction cancelled"
+		}
+
+		timeout.Stop()
+		delete(c.transactionTimeouts, requestId)
+
+		// If the transaction still exists, notify the handler it timed out
+		if transaction, ok := c.transactions[requestId]; ok {
+			transaction(&Context{
+				Error: fmt.Errorf(cancelCause),
+			})
+			delete(c.transactions, requestId)
+		}
+	}()
 
 	// Send out the request
 	return c.Write(requestId, request)
