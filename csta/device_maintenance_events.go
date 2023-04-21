@@ -16,7 +16,7 @@ func init() {
 }
 
 type OutOfServiceEvent struct {
-	XMLName           xml.Name        `xml:"http://www.ecma-international.org/standards/ecma-323/csta/ed4 OutOfServiceEvent"`
+	XMLName           xml.Name        `xml:"OutOfServiceEvent"`
 	MonitorCrossRefID string          `xml:"monitorCrossRefID"`
 	Device            SubjectDeviceID `xml:"device"`
 }
@@ -26,7 +26,7 @@ func (OutOfServiceEvent) Type() MessageType {
 }
 
 type BackInServiceEvent struct {
-	XMLName           xml.Name        `xml:"http://www.ecma-international.org/standards/ecma-323/csta/ed4 BackInServiceEvent"`
+	XMLName           xml.Name        `xml:"BackInServiceEvent"`
 	MonitorCrossRefID string          `xml:"monitorCrossRefID"`
 	Device            SubjectDeviceID `xml:"device"`
 }

@@ -14,7 +14,7 @@ func init() {
 }
 
 type ButtonInformationEvent struct {
-	XMLName           xml.Name        `xml:"http://www.ecma-international.org/standards/ecma-323/csta/ed4 ButtonInformationEvent"`
+	XMLName           xml.Name        `xml:"ButtonInformationEvent"`
 	MonitorCrossRefID string          `xml:"monitorCrossRefID"`
 	Device            SubjectDeviceID `xml:"device"`
 	Button            ButtonID        `xml:"button"`

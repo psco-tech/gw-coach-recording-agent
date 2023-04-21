@@ -18,7 +18,7 @@ func init() {
 }
 
 type OriginatedEvent struct {
-	XMLName              xml.Name        `xml:"http://www.ecma-international.org/standards/ecma-323/csta/ed4 OriginatedEvent"`
+	XMLName              xml.Name        `xml:"OriginatedEvent"`
 	MonitorCrossRefID    string          `xml:"monitorCrossRefID"`
 	OriginatedConnection ConnectionID    `xml:"originatedConnection"`
 	CallingDevice        SubjectDeviceID `xml:"callingDevice"`
@@ -32,7 +32,7 @@ func (OriginatedEvent) Type() MessageType {
 }
 
 type DeliveredEvent struct {
-	XMLName               xml.Name            `xml:"http://www.ecma-international.org/standards/ecma-323/csta/ed4 DeliveredEvent"`
+	XMLName               xml.Name            `xml:"DeliveredEvent"`
 	MonitorCrossRefID     string              `xml:"monitorCrossRefID"`
 	Connection            ConnectionID        `xml:"connection"`
 	AlertingDevice        SubjectDeviceID     `xml:"alertingDevice"`
@@ -48,7 +48,7 @@ func (DeliveredEvent) Type() MessageType {
 }
 
 type EstablishedEvent struct {
-	XMLName               xml.Name            `xml:"http://www.ecma-international.org/standards/ecma-323/csta/ed4 EstablishedEvent"`
+	XMLName               xml.Name            `xml:"EstablishedEvent"`
 	MonitorCrossRefID     string              `xml:"monitorCrossRefID"`
 	EstablishedConnection ConnectionID        `xml:"establishedConnection"`
 	AnsweringDevice       SubjectDeviceID     `xml:"answeringDevice"`

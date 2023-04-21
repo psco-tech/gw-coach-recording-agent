@@ -23,7 +23,7 @@ func init() {
 }
 
 type GetPhysicalDeviceInformation struct {
-	XMLName xml.Name `xml:"http://www.ecma-international.org/standards/ecma-323/csta/ed4 GetPhysicalDeviceInformation"`
+	XMLName xml.Name `xml:"GetPhysicalDeviceInformation"`
 	Device  DeviceID `xml:"device"`
 }
 
@@ -32,7 +32,7 @@ func (m GetPhysicalDeviceInformation) Type() MessageType {
 }
 
 type GetPhysicalDeviceInformationResponse struct {
-	XMLName xml.Name `xml:"http://www.ecma-international.org/standards/ecma-323/csta/ed4 GetPhysicalDeviceInformationResponse"`
+	XMLName xml.Name `xml:"GetPhysicalDeviceInformationResponse"`
 }
 
 func (m GetPhysicalDeviceInformationResponse) Type() MessageType {
@@ -40,7 +40,7 @@ func (m GetPhysicalDeviceInformationResponse) Type() MessageType {
 }
 
 type GetSwitchingFunctionDevices struct {
-	XMLName xml.Name `xml:"http://www.ecma-international.org/standards/ecma-323/csta/ed4 GetSwitchingFunctionDevices"`
+	XMLName xml.Name `xml:"GetSwitchingFunctionDevices"`
 }
 
 func (m GetSwitchingFunctionDevices) Type() MessageType {
@@ -48,7 +48,7 @@ func (m GetSwitchingFunctionDevices) Type() MessageType {
 }
 
 type GetSwitchingFunctionDevicesResponse struct {
-	XMLName xml.Name `xml:"http://www.ecma-international.org/standards/ecma-323/csta/ed4 GetSwitchingFunctionDevicesResponse"`
+	XMLName xml.Name `xml:"GetSwitchingFunctionDevicesResponse"`
 }
 
 func (m GetSwitchingFunctionDevicesResponse) Type() MessageType {
@@ -56,7 +56,7 @@ func (m GetSwitchingFunctionDevicesResponse) Type() MessageType {
 }
 
 type SwitchingFunctionDevices struct {
-	XMLName           xml.Name   `xml:"http://www.ecma-international.org/standards/ecma-323/csta/ed4 SwitchingFunctionDevices"`
+	XMLName           xml.Name   `xml:"SwitchingFunctionDevices"`
 	ServiceCrossRefID string     `xml:"serviceCrossRefID"`
 	SegmentID         uint       `xml:"segmentID"`
 	LastSegment       bool       `xml:"lastSegment"`
