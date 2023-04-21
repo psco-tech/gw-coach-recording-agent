@@ -6,15 +6,32 @@ import (
 )
 
 const (
-	MessageTypeOriginatedEvent  MessageType = "OriginatedEvent"
-	MessageTypeDeliveredEvent   MessageType = "DeliveredEvent"
-	MessageTypeEstablishedEvent MessageType = "EstablishedEvent"
+	MessageTypeServiceInitiatedEvent  MessageType = "ServiceInitiatedEvent"
+	MessageTypeOriginatedEvent        MessageType = "OriginatedEvent"
+	MessageTypeDeliveredEvent         MessageType = "DeliveredEvent"
+	MessageTypeEstablishedEvent       MessageType = "EstablishedEvent"
+	MessageTypeConnectionClearedEvent MessageType = "ConnectionClearedEvent"
 )
 
 func init() {
+	registerMessageType(MessageTypeServiceInitiatedEvent, reflect.TypeOf(ServiceInitiatedEvent{}))
 	registerMessageType(MessageTypeOriginatedEvent, reflect.TypeOf(OriginatedEvent{}))
 	registerMessageType(MessageTypeDeliveredEvent, reflect.TypeOf(DeliveredEvent{}))
 	registerMessageType(MessageTypeEstablishedEvent, reflect.TypeOf(EstablishedEvent{}))
+}
+
+type ServiceInitiatedEvent struct {
+	XMLName             xml.Name         `xml:"ServiceInitiatedEvent"`
+	MonitorCrossRefID   string           `xml:"monitorCrossRefID"`
+	InitiatedConnection ConnectionID     `xml:"initiatedConnection"`
+	InititatingDevice   SubjectDeviceID  `xml:"initiatingDevice"`
+	LocalConnectionInfo string           `xml:"localConnectionInfo"`
+	Cause               string           `xml:"cause"`
+	CallLinkageData     *CallLinkageData `xml:"callLinkageData,omitempty"`
+}
+
+func (ServiceInitiatedEvent) Type() MessageType {
+	return MessageTypeServiceInitiatedEvent
 }
 
 type OriginatedEvent struct {
