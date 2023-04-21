@@ -3,11 +3,14 @@ package osbiz
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"sync"
 
 	"github.com/psco-tech/gw-coach-recording-agent/csta"
+	"github.com/psco-tech/gw-coach-recording-agent/models"
 	"github.com/psco-tech/gw-coach-recording-agent/pbx"
+	"github.com/psco-tech/gw-coach-recording-agent/rtp"
 	"github.com/spf13/viper"
 )
 
@@ -24,9 +27,39 @@ func (pbx *OSBiz) SetContext(ctx context.Context) {
 	pbx.ctx = ctx
 }
 
-func (pbx *OSBiz) Serve() error {
+func (pbx *OSBiz) Serve(recorderPool rtp.RecorderPool) error {
 	defer pbx.Close()
-	return nil
+	log.Printf("Handling PBX connection\n")
+
+	// Get access to the persistence layer
+	db, err := models.NewDatabase()
+	if err != nil {
+		return err
+	}
+
+	monitoredDevices := db.GetMonitoredDevices()
+	log.Printf("%d devices are configured to be monitored\n", len(monitoredDevices))
+
+	for _, d := range monitoredDevices {
+		mp, err := pbx.MonitorStart(d.Extension)
+		if err != nil {
+			log.Printf("Failed to start monitoring <%s>: %s", d.Extension, err)
+			continue
+		}
+
+		d.CrossReferenceID = mp.CrossReferenceID()
+		db.Save(d)
+	}
+
+	// Add additional actions to do on newly established PBX connection here
+
+	// Handlers will run in the background, wait for anything to fail/end
+	select {
+	case <-pbx.ctx.Done():
+		return nil
+	case <-pbx.conn.Closed():
+		return io.EOF
+	}
 }
 
 func (pbx *OSBiz) Connect() (csta.Conn, error) {
@@ -169,7 +202,7 @@ func (osbiz *OSBiz) MonitorStart(deviceId string) (mp pbx.MonitorPoint, err erro
 type monitorPoint struct {
 	crossReferenceID string
 	device           *device
-	events           chan csta.Message
+	subscribers      []chan csta.Message
 }
 
 func (mp *monitorPoint) CrossReferenceID() string {
@@ -181,17 +214,18 @@ func (mp *monitorPoint) Device() pbx.Device {
 }
 
 func (mp *monitorPoint) Events() <-chan csta.Message {
-	if mp.events == nil {
-		mp.events = make(chan csta.Message, defaultEventBufferSize)
+	if mp.subscribers == nil {
+		mp.subscribers = make([]chan csta.Message, 0)
 	}
-	return mp.events
+	subscriberChannel := make(chan csta.Message, defaultEventBufferSize)
+	mp.subscribers = append(mp.subscribers, subscriberChannel)
+	return subscriberChannel
 }
 
 func (mp *monitorPoint) dispatchEvent(e csta.Message) {
-	if mp.events == nil {
-		mp.events = make(chan csta.Message, defaultEventBufferSize)
+	for _, subscriber := range mp.subscribers {
+		subscriber <- e
 	}
-	mp.events <- e
 }
 
 type device struct {

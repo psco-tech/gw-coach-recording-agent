@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/psco-tech/gw-coach-recording-agent/csta"
+	"github.com/psco-tech/gw-coach-recording-agent/rtp"
 	"github.com/spf13/viper"
 )
 
@@ -31,7 +32,7 @@ type PBX interface {
 	ConnectionState() ConnectionState
 	MonitorStart(deviceId string) (monitorPoint MonitorPoint, err error)
 	SetContext(ctx context.Context)
-	Serve() error
+	Serve(recorderPool rtp.RecorderPool) error
 	Close() error
 }
 
