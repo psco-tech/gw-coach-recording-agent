@@ -36,11 +36,10 @@ func (aes *AvayaAES) Connect() (csta.Conn, error) {
 		return nil, err
 	}
 
-	aes.setupHandlers(cstaConn)
+	aes.conn = cstaConn
+	aes.setupHandlers()
 
 	var wg sync.WaitGroup
-
-	aes.conn = cstaConn
 
 	wg.Add(1)
 	err = cstaConn.StartApplicationSession(viper.GetString("application_id"), struct {
@@ -110,7 +109,7 @@ func (aes *AvayaAES) applicationSessionTimer(ctx context.Context) {
 	}
 }
 
-func (aes *AvayaAES) setupHandlers(conn csta.Conn) {
+func (aes *AvayaAES) setupHandlers() {
 	aes.conn.Handle(csta.MessageTypeEstablishedEvent, aes.onEstablishedEvent)
 	aes.conn.Handle(csta.MessageTypeConnectionClearedEvent, aes.onConnectionClearedEvent)
 }
