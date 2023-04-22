@@ -204,7 +204,7 @@ func (aes *AvayaAES) GetDeviceID(extension string) (deviceId string, err error) 
 	wg.Add(1)
 
 	aes.conn.Request(csta.GetDeviceId{
-		SwitchName: viper.GetString("pbx_switch_name"),
+		SwitchName: viper.GetString("avaya_aes.switch_name"),
 		Extension:  extension,
 	}, func(c *csta.Context) {
 		defer wg.Done()
