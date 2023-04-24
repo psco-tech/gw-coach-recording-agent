@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"sync"
 	"time"
 
@@ -23,6 +25,7 @@ type AvayaAES struct {
 	sessionId     string
 	conn          csta.Conn
 	monitorPoints map[string]*monitorPoint
+	recorders     []*recorderTerminal
 }
 
 func (aes *AvayaAES) SetContext(ctx context.Context) {
@@ -37,7 +40,6 @@ func (aes *AvayaAES) Connect() (csta.Conn, error) {
 	}
 
 	aes.conn = cstaConn
-	aes.setupHandlers()
 
 	var wg sync.WaitGroup
 
@@ -107,11 +109,6 @@ func (aes *AvayaAES) applicationSessionTimer(ctx context.Context) {
 			return
 		}
 	}
-}
-
-func (aes *AvayaAES) setupHandlers() {
-	aes.conn.Handle(csta.MessageTypeEstablishedEvent, aes.onEstablishedEvent)
-	aes.conn.Handle(csta.MessageTypeConnectionClearedEvent, aes.onConnectionClearedEvent)
 }
 
 func (aes *AvayaAES) ConnectionState() pbx.ConnectionState {
@@ -242,12 +239,19 @@ func (aes *AvayaAES) Serve(recorderPool rtp.RecorderPool) error {
 		return fmt.Errorf("not enough recorders configured to service all recording devices")
 	}
 
+	aes.recorders = make([]*recorderTerminal, 0)
+
 	for i, rd := range recordingDevices {
 		log.Printf("Registering AES recording device <%s> with local recording endpoint <%s>", rd.Extension, recorders[i].LocalAddr().String())
 		err := aes.RegisterTerminal(rd.Extension, rd.Password, recorders[i].LocalAddr().(*net.UDPAddr))
 		if err != nil {
 			log.Printf("Failed to register AES recording device: %s\n", err)
+			continue
 		}
+		aes.recorders = append(aes.recorders, &recorderTerminal{
+			Extension: rd.Extension,
+			Recorder:  recorders[i],
+		})
 	}
 
 	// Get devices to be monitored
@@ -267,6 +271,8 @@ func (aes *AvayaAES) Serve(recorderPool rtp.RecorderPool) error {
 	}
 
 	// Add additional actions to do on newly established PBX connection here
+	aes.conn.Handle(csta.MessageTypeEstablishedEvent, aes.onEstablishedEvent)
+	aes.conn.Handle(csta.MessageTypeConnectionClearedEvent, aes.onConnectionClearedEvent)
 
 	// Handlers will run in the background, wait for anything to fail/end
 	select {
@@ -359,8 +365,29 @@ func (d *device) DeviceID() string {
 func (aes *AvayaAES) onEstablishedEvent(c *csta.Context) {
 	// Check for the correct event data type
 	if event, ok := (c.Message).(*csta.EstablishedEvent); ok {
-		// Get the monitor point this event is for
+		// Get a free recording device
+		recorder, err := aes.GetRecorder()
+		if err != nil {
+			log.Printf("Failed to start recording of established call: %s\n", err)
+			return
+		}
+
+		file, err := ioutil.TempFile(os.TempDir(), "*.wav")
+		if err != nil {
+			log.Printf("Failed to create a temporary recording file: %s\n", err)
+			return
+		}
+
+		log.Printf("Starting call recording for device at cross reference ID <%s> in file \"%s\"\n", event.MonitorCrossRefID, file.Name())
+		recorder.StartRecording(file, event.MonitorCrossRefID)
+
 		if mp, ok := aes.monitorPoints[event.MonitorCrossRefID]; ok {
+			log.Printf("Initiating observation of <%s> by <%s>\n", mp.device.extension, recorder.Extension)
+			aes.conn.Request(csta.MakeCall{
+				CallingDevice:         recorder.Extension,
+				CalledDirectoryNumber: fmt.Sprintf("%s%s", viper.GetString("avaya_aes.srv_obsrv_feature_code"), mp.device.extension),
+			}, func(c *csta.Context) {})
+
 			mp.dispatchEvent(event)
 		}
 	}
@@ -369,6 +396,18 @@ func (aes *AvayaAES) onEstablishedEvent(c *csta.Context) {
 func (aes *AvayaAES) onConnectionClearedEvent(c *csta.Context) {
 	// Check for the correct event data type
 	if event, ok := (c.Message).(*csta.ConnectionClearedEvent); ok {
+
+		log.Printf("Stopping call recording for device at cross reference ID <%s>\n", event.MonitorCrossRefID)
+
+		// Get the recording device responsible for this call
+		recorder, err := aes.GetRecorderByCallReference(event.MonitorCrossRefID)
+		if err != nil {
+			log.Printf("Failed to stop recording of established call (%s): %s\n", event.MonitorCrossRefID, err)
+			return
+		}
+
+		recorder.StopRecording()
+
 		// Get the monitor point this event is for
 		if mp, ok := aes.monitorPoints[event.MonitorCrossRefID]; ok {
 			mp.dispatchEvent(event)
