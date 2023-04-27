@@ -30,7 +30,7 @@ func NewDatabase() (*DB, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	err = db.AutoMigrate(&Device{}, &AESRecordingDevice{})
+	err = db.AutoMigrate(&Device{}, &AESRecordingDevice{}, &PBXConnectionCredentials{}, &AppConfig{})
 	if err != nil {
 		return nil, fmt.Errorf("database migration failed: %w", err)
 	}
@@ -38,6 +38,19 @@ func NewDatabase() (*DB, error) {
 	return &DB{
 		gormDB: db,
 	}, nil
+}
+
+// Get all devices that shall be monitored
+func (db *DB) GetAllDevices() []Device {
+	var devices []Device
+	db.gormDB.Find(&devices)
+	return devices
+}
+
+func (db *DB) GetDeviceById(deviceId int) Device {
+	var device Device
+	db.gormDB.Where("id = ?", deviceId).First(&device)
+	return device
 }
 
 // Get all devices that shall be monitored
@@ -54,6 +67,16 @@ func (db *DB) GetAESRecordingDevices() []AESRecordingDevice {
 	return devices
 }
 
+func (db *DB) GetPBXConnectionCredentials() (PBXConnectionCredentials, error) {
+	var creds PBXConnectionCredentials
+	err := db.gormDB.First(&creds).Error
+	return creds, err
+}
+
 func (db *DB) Save(value interface{}) (tx *gorm.DB) {
 	return db.gormDB.Save(value)
+}
+
+func (db *DB) Delete(value interface{}) (tx *gorm.DB) {
+	return db.gormDB.Delete(value)
 }

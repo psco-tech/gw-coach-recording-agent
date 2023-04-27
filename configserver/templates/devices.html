@@ -1,5 +1,38 @@
 {{template "header" .}}
-<div>
-    Devices
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12 d-flex justify-content-end">
+            <!-- Button at the top right of the screen -->
+            <a class="btn btn-primary mt-3" href="/add-device">Add Device</a>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <!-- Table below the button -->
+            <table class="table mt-3">
+                <thead>
+                    <tr>
+                        <th scope="col">Extension #</th>
+                        <th scope="col">Extension Description</th>
+                        <th scope="col">Last Recorded Call At</th>
+                        <th scope="col">Record Calls</th>
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ range .BodyData }}
+                    <tr>
+                        <th scope="row">{{ .Extension }}</th>
+                        <td>{{ .Description }}</td>
+                        <td>{{ .LastRecordedCall }}</td>
+                        <td>{{ .RecordCalls }}</td>
+                        <td><a href="/del-device/{{ .ID }}" class="btn btn-danger">Delete</a></td>
+                    </tr>
+                    {{ end }}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
 </div>
 {{template "footer" .}}

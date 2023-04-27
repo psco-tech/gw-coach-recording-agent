@@ -1,0 +1,18 @@
+{{template "header" .}}
+<div class="container">
+    <div class="row">
+        <div class="col-md-6 offset-md-3 mt-5">
+            <h1 class="mb-4">Delete Device</h1>
+            <form action="/del-device/{{ .BodyData.ID }}" method="post">
+
+                <div class="alert alert-danger" role="alert">
+                    Are you sure you want to delete this device?
+                </div>
+                <a class="btn btn-outline-secondary" role="button" href="/devices">Cancel</a>
+                <input type="submit" class="btn btn-danger" value="Delete">
+            </form>
+        </div>
+    </div>
+</div>
+
+{{template "footer" .}}

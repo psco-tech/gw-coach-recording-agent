@@ -1,6 +1,29 @@
 {{template "header" .}}
-<div>
-    Connect
+<div class="container">
+    <div class="row">
+        <div class="col-md-6 offset-md-3 mt-5">
+            <h1 class="mb-4">Connection Credentials</h1>
+            <form action="/connection" method="post">
+                <div class="mb-3">
+                    <label for="host" class="form-label">Host:</label>
+                    <input type="text" value="{{.BodyData.Host}}" class="form-control" id="host" name="host" required>
+                </div>
+                <div class="mb-3">
+                    <label for="port" class="form-label">Port:</label>
+                    <input type="number" value="{{.BodyData.Port}}" class="form-control" id="port" name="port" required>
+                </div>
+                <div class="mb-3">
+                    <label for="user" class="form-label">User:</label>
+                    <input type="text" value="{{.BodyData.Username}}" class="form-control" id="user" name="username" required>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password:</label>
+                    <input type="password" value="{{.BodyData.Password}}" class="form-control" id="password" name="password" required>
+                </div>
+                <input type="submit" class="btn btn-primary" value="Submit">
+            </form>
+        </div>
+    </div>
 </div>
 {{template "footer" .}}
 
