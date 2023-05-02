@@ -30,7 +30,7 @@ func NewDatabase() (*DB, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	err = db.AutoMigrate(&Device{}, &AESRecordingDevice{}, &PBXConnectionCredentials{}, &AppConfig{})
+	err = db.AutoMigrate(&Device{}, &AESRecordingDevice{}, &PBXConnectionCredentials{}, &AppConfig{}, &UploadRecord{})
 	if err != nil {
 		return nil, fmt.Errorf("database migration failed: %w", err)
 	}
@@ -71,6 +71,18 @@ func (db *DB) GetPBXConnectionCredentials() (PBXConnectionCredentials, error) {
 	var creds PBXConnectionCredentials
 	err := db.gormDB.First(&creds).Error
 	return creds, err
+}
+
+func (db *DB) GetAppConfig() (AppConfig, error) {
+	var config AppConfig
+	err := db.gormDB.First(&config).Error
+	return config, err
+}
+
+func (db *DB) GetRecentUploads() ([]UploadRecord, error) {
+	var records []UploadRecord
+	err := db.gormDB.Order("created_at desc").Find(&records).Error
+	return records, err
 }
 
 func (db *DB) Save(value interface{}) (tx *gorm.DB) {

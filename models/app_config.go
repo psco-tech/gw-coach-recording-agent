@@ -1,8 +1,11 @@
 package models
 
+import "gorm.io/gorm"
+
 type AppConfig struct {
+	gorm.Model
 	// Key from the Coach Server that allows for upload
-	AgentKey string
+	AgentToken string
 
 	UploadDir string
 }

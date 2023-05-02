@@ -3,10 +3,10 @@
     <div class="row">
         <div class="col-md-6 offset-md-3 mt-5">
             <h1 class="mb-4">Cloud & Upload Configuration</h1>
-            <form action="/connection" method="post">
+            <form action="/app" method="post">
                 <div class="mb-3">
-                    <label for="host" class="form-label">Token:</label>
-                    <input type="text" value="{{.BodyData.Host}}" class="form-control" id="host" name="host" required>
+                    <label for="agentToken" class="form-label">Agent Token:</label>
+                    <input type="text" value="{{.BodyData.AgentToken}}" class="form-control" id="agentToken" name="agentToken" required>
                 </div>
                 <input type="submit" class="btn btn-primary" value="Submit">
             </form>

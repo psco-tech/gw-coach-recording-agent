@@ -20,10 +20,11 @@ type NavItem struct {
 }
 
 var navItems = []NavItem{
-	{Path: "/", Title: "Overview"},
+	{Path: "/", Title: "Overview", IconClass: "bi-house"},
+	{Path: "/app", Title: "App Config", IconClass: "bi-cloud"},
+	{Path: "/uploads", Title: "Data Uploads", IconClass: "bi-cloud-upload"},
 	{Path: "/connection", Title: "Connect PBX", IconClass: "bi-hdd-stack"},
 	{Path: "/devices", Title: "Devices", IconClass: "bi-telephone"},
-	{Path: "/app", Title: "App Config", IconClass: "bi-cloud"},
 }
 
 func renderWithError(wr io.Writer, templateName string, activePath string, data any, err string) error {
