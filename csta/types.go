@@ -36,6 +36,13 @@ type CalledDeviceID struct {
 	ExtendedDeviceID
 }
 
+type NetworkCallingDeviceID struct {
+	ExtendedDeviceID
+}
+type NetworkCalledDeviceID struct {
+	ExtendedDeviceID
+}
+
 type LocalDeviceID struct {
 	Device       string `xml:",chardata"`
 	TypeOfNumber string `xml:"typeOfNumber,attr"`
@@ -69,4 +76,17 @@ type Device struct {
 
 type DeviceList struct {
 	Devices []Device `xml:"device"`
+}
+
+type CallLinkageData struct {
+	GlobalCallData GlobalCallData `xml:"globalCallData"`
+}
+
+type GlobalCallData struct {
+	GlobalCallLinkageID GlobalCallLinkageID `xml:"globalCallLinkageID"`
+}
+
+type GlobalCallLinkageID struct {
+	GloballyUniqueCallLinkageID string `xml:"globallyUniqueCallLinkageID,omitempty"`
+	SubDomainCallLinkageID      string `xml:"subDomainCallLinkageID,omitempty"`
 }

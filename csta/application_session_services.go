@@ -118,16 +118,18 @@ func (c *cstaConn) StartApplicationSession(applicationId string, applicationSpec
 		ProtocolVersion:          protocolVersion,
 		ApplicationSpecificInfo:  applicationSpecificInfo,
 	}, func(ctx *Context) {
-		switch ctx.Message.Type() {
-		case MessageTypeStartApplicationSessionPosResponse:
-			c.sessionId = ctx.Message.(*StartApplicationSessionPosResponse).SessionID
-			c.state = ConnectionStateActive
-			// TODO start periodic refresh
+		if ctx.Error == nil {
+			switch ctx.Message.Type() {
+			case MessageTypeStartApplicationSessionPosResponse:
+				c.sessionId = ctx.Message.(*StartApplicationSessionPosResponse).SessionID
+				c.state = ConnectionStateActive
+				// TODO start periodic refresh
 
-		case MessageTypeStartApplicationSessionNegResponse:
-			c.state = ConnectionStateError
-			c.Close()
-			ctx.Error = fmt.Errorf("received StartApplicationSessionNegResponse")
+			case MessageTypeStartApplicationSessionNegResponse:
+				c.state = ConnectionStateError
+				c.Close()
+				ctx.Error = fmt.Errorf("received StartApplicationSessionNegResponse")
+			}
 		}
 
 		dispatchCallbacks(ctx, callback...)

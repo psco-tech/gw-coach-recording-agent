@@ -16,7 +16,7 @@ func init() {
 }
 
 type SystemStatus struct {
-	XMLName xml.Name `xml:"http://www.ecma-international.org/standards/ecma-323/csta/ed4 SystemStatus"`
+	XMLName xml.Name `xml:"SystemStatus"`
 }
 
 func (m SystemStatus) Type() MessageType {
@@ -24,7 +24,7 @@ func (m SystemStatus) Type() MessageType {
 }
 
 type SystemStatusResponse struct {
-	XMLName xml.Name `xml:"http://www.ecma-international.org/standards/ecma-323/csta/ed4 SystemStatusResponse"`
+	XMLName xml.Name `xml:"SystemStatusResponse"`
 }
 
 func (m SystemStatusResponse) Type() MessageType {
@@ -33,4 +33,7 @@ func (m SystemStatusResponse) Type() MessageType {
 
 func acknowledgeSystemStatus(c *Context) {
 	c.conn.Write(c.InvokeID, SystemStatusResponse{})
+}
+
+func ignoreMessage(c *Context) {
 }

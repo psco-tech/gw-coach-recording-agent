@@ -45,18 +45,18 @@ func (r *rtpRecorderPool) Start() error {
 	log.Printf("Starting RTP Receiver Task\n")
 
 	log.Printf("Starting %d RTP listeners\n", len(r.recorders))
-	for _, recorder := range r.recorders {
+	for i := 0; i < len(r.recorders); i++ {
 		l, err := net.ListenPacket("udp4", fmt.Sprintf("%s:0", viper.GetString("rtp.recorder_address")))
 		if err != nil {
 			log.Printf("Failed to start RTP listener: %s", err)
 			continue
 		}
 
-		recorder = &rtpRecorder{conn: l, ctx: r.ctx}
+		r.recorders[i] = &rtpRecorder{conn: l, ctx: r.ctx}
 
 		// Start them immediately
 		// TODO handle recorder failures
-		go recorder.Start()
+		go r.recorders[i].Start()
 	}
 
 	return nil

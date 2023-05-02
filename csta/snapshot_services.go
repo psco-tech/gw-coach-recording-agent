@@ -16,7 +16,7 @@ func init() {
 }
 
 type SnapshotDevice struct {
-	XMLName        xml.Name   `xml:"http://www.ecma-international.org/standards/ecma-323/csta/ed4 SnapshotDevice"`
+	XMLName        xml.Name   `xml:"SnapshotDevice"`
 	SnapshotObject CSTAObject `xml:"snapshotObject"`
 }
 
@@ -25,7 +25,7 @@ func (SnapshotDevice) Type() MessageType {
 }
 
 type SnapshotDeviceResponse struct {
-	XMLName           xml.Name `xml:"http://www.ecma-international.org/standards/ecma-323/csta/ed4 SnapshotDeviceResponse"`
+	XMLName           xml.Name `xml:"SnapshotDeviceResponse"`
 	ServiceCrossRefID string   `xml:"serviceCrossRefID"`
 }
 

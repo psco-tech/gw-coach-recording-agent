@@ -3,13 +3,18 @@ package avaya
 import (
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/psco-tech/gw-coach-recording-agent/csta"
+	"github.com/psco-tech/gw-coach-recording-agent/models"
 	"github.com/psco-tech/gw-coach-recording-agent/pbx"
+	"github.com/psco-tech/gw-coach-recording-agent/rtp"
 	"github.com/spf13/viper"
 )
 
@@ -20,6 +25,7 @@ type AvayaAES struct {
 	sessionId     string
 	conn          csta.Conn
 	monitorPoints map[string]*monitorPoint
+	recorders     []*recorderTerminal
 }
 
 func (aes *AvayaAES) SetContext(ctx context.Context) {
@@ -33,11 +39,9 @@ func (aes *AvayaAES) Connect() (csta.Conn, error) {
 		return nil, err
 	}
 
-	aes.setupHandlers(cstaConn)
+	aes.conn = cstaConn
 
 	var wg sync.WaitGroup
-
-	aes.conn = cstaConn
 
 	wg.Add(1)
 	err = cstaConn.StartApplicationSession(viper.GetString("application_id"), struct {
@@ -105,10 +109,6 @@ func (aes *AvayaAES) applicationSessionTimer(ctx context.Context) {
 			return
 		}
 	}
-}
-
-func (aes *AvayaAES) setupHandlers(conn csta.Conn) {
-
 }
 
 func (aes *AvayaAES) ConnectionState() pbx.ConnectionState {
@@ -201,7 +201,7 @@ func (aes *AvayaAES) GetDeviceID(extension string) (deviceId string, err error) 
 	wg.Add(1)
 
 	aes.conn.Request(csta.GetDeviceId{
-		SwitchName: viper.GetString("pbx_switch_name"),
+		SwitchName: viper.GetString("avaya_aes.switch_name"),
 		Extension:  extension,
 	}, func(c *csta.Context) {
 		defer wg.Done()
@@ -220,9 +220,67 @@ func (aes *AvayaAES) GetDeviceID(extension string) (deviceId string, err error) 
 	return
 }
 
-func (a *AvayaAES) Serve() error {
-	defer a.Close()
-	return nil
+func (aes *AvayaAES) Serve(recorderPool rtp.RecorderPool) error {
+	defer aes.Close()
+	log.Printf("Handling PBX connection\n")
+
+	// Get access to the persistence layer
+	db, err := models.NewDatabase()
+	if err != nil {
+		return err
+	}
+
+	// Get recprding devices to be registered
+	recordingDevices := db.GetAESRecordingDevices()
+	log.Printf("%d AES recording devices configured\n", len(recordingDevices))
+	recorders := recorderPool.GetAllRecorders()
+
+	if len(recorders) < len(recordingDevices) {
+		return fmt.Errorf("not enough recorders configured to service all recording devices")
+	}
+
+	aes.recorders = make([]*recorderTerminal, 0)
+
+	for i, rd := range recordingDevices {
+		log.Printf("Registering AES recording device <%s> with local recording endpoint <%s>", rd.Extension, recorders[i].LocalAddr().String())
+		err := aes.RegisterTerminal(rd.Extension, rd.Password, recorders[i].LocalAddr().(*net.UDPAddr))
+		if err != nil {
+			log.Printf("Failed to register AES recording device: %s\n", err)
+			continue
+		}
+		aes.recorders = append(aes.recorders, &recorderTerminal{
+			Extension: rd.Extension,
+			Recorder:  recorders[i],
+		})
+	}
+
+	// Get devices to be monitored
+	monitoredDevices := db.GetMonitoredDevices()
+	log.Printf("%d devices are configured to be monitored\n", len(monitoredDevices))
+
+	// Run MonitorStart on all of the monitored devices
+	for _, d := range monitoredDevices {
+		mp, err := aes.MonitorStart(d.Extension)
+		if err != nil {
+			log.Printf("Failed to start monitoring <%s>: %s", d.Extension, err)
+			continue
+		}
+
+		d.CrossReferenceID = mp.CrossReferenceID()
+		db.Save(d)
+	}
+
+	// Add additional actions to do on newly established PBX connection here
+	aes.conn.Handle(csta.MessageTypeEstablishedEvent, aes.onEstablishedEvent)
+	aes.conn.Handle(csta.MessageTypeConnectionClearedEvent, aes.onConnectionClearedEvent)
+
+	// Handlers will run in the background, wait for anything to fail/end
+	select {
+	case <-aes.ctx.Done():
+		return nil
+	case <-aes.conn.Closed():
+		return io.EOF
+	}
 }
 
 // RegisterTerminal will force-register a virtual station and instruct the Gateway to
@@ -269,7 +327,7 @@ func (aes *AvayaAES) RegisterTerminal(extension string, password string, localRt
 type monitorPoint struct {
 	crossReferenceID string
 	device           *device
-	events           chan csta.Message
+	subscribers      []chan csta.Message
 }
 
 func (mp *monitorPoint) CrossReferenceID() string {
@@ -281,10 +339,18 @@ func (mp *monitorPoint) Device() pbx.Device {
 }
 
 func (mp *monitorPoint) Events() <-chan csta.Message {
-	if mp.events == nil {
-		mp.events = make(chan csta.Message, defaultEventBufferSize)
+	if mp.subscribers == nil {
+		mp.subscribers = make([]chan csta.Message, 0)
 	}
-	return mp.events
+	subscriberChannel := make(chan csta.Message, defaultEventBufferSize)
+	mp.subscribers = append(mp.subscribers, subscriberChannel)
+	return subscriberChannel
+}
+
+func (mp *monitorPoint) dispatchEvent(e csta.Message) {
+	for _, subscriber := range mp.subscribers {
+		subscriber <- e
+	}
 }
 
 type device struct {
@@ -294,4 +360,57 @@ type device struct {
 
 func (d *device) DeviceID() string {
 	return d.deviceId
+}
+
+func (aes *AvayaAES) onEstablishedEvent(c *csta.Context) {
+	// Check for the correct event data type
+	if event, ok := (c.Message).(*csta.EstablishedEvent); ok {
+		// Get a free recording device
+		recorder, err := aes.GetRecorder()
+		if err != nil {
+			log.Printf("Failed to start recording of established call: %s\n", err)
+			return
+		}
+
+		file, err := ioutil.TempFile(os.TempDir(), "*.wav")
+		if err != nil {
+			log.Printf("Failed to create a temporary recording file: %s\n", err)
+			return
+		}
+
+		log.Printf("Starting call recording for device at cross reference ID <%s> in file \"%s\"\n", event.MonitorCrossRefID, file.Name())
+		recorder.StartRecording(file, event.MonitorCrossRefID)
+
+		if mp, ok := aes.monitorPoints[event.MonitorCrossRefID]; ok {
+			log.Printf("Initiating observation of <%s> by <%s>\n", mp.device.extension, recorder.Extension)
+			aes.conn.Request(csta.MakeCall{
+				CallingDevice:         recorder.Extension,
+				CalledDirectoryNumber: fmt.Sprintf("%s%s", viper.GetString("avaya_aes.srv_obsrv_feature_code"), mp.device.extension),
+			}, func(c *csta.Context) {})
+
+			mp.dispatchEvent(event)
+		}
+	}
+}
+
+func (aes *AvayaAES) onConnectionClearedEvent(c *csta.Context) {
+	// Check for the correct event data type
+	if event, ok := (c.Message).(*csta.ConnectionClearedEvent); ok {
+
+		log.Printf("Stopping call recording for device at cross reference ID <%s>\n", event.MonitorCrossRefID)
+
+		// Get the recording device responsible for this call
+		recorder, err := aes.GetRecorderByCallReference(event.MonitorCrossRefID)
+		if err != nil {
+			log.Printf("Failed to stop recording of established call (%s): %s\n", event.MonitorCrossRefID, err)
+			return
+		}
+
+		recorder.StopRecording()
+
+		// Get the monitor point this event is for
+		if mp, ok := aes.monitorPoints[event.MonitorCrossRefID]; ok {
+			mp.dispatchEvent(event)
+		}
+	}
 }

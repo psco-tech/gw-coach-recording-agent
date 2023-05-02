@@ -160,7 +160,7 @@ func (c *callRecordingAgentService) reestablishPBXConnection() error {
 			}
 
 			log.Printf("Successfully connected to PBX\n")
-			err = c.pbx.Serve()
+			err = c.pbx.Serve(c.recorderPool)
 
 			// When Serve() returns an err the connection is lost or closed
 			if err != nil {
