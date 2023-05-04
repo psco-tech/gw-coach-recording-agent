@@ -31,6 +31,7 @@ func DownloadYouTubeVideo(videoURL string, outputDir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("create output file: %v", err)
 	}
+	defer outputFile.Close()
 
 	_, err = io.Copy(outputFile, stream)
 	if err != nil {

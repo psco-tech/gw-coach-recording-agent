@@ -19,5 +19,24 @@
             </div>
         </div>
     </div>
+    <div class="row">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">File Storage</h5>
+                <p>This is where files that are being uploaded to the cloud will be stored. The application needs permissions to write to the file system to manage these files.</p>
+                {{ if .BodyData.UploadStorageDirectoryErr }}
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><b>Status:</b> <i class="bi bi-exclamation-circle" style="color: red"></i> Cannot write to the file system: {{ .BodyData.UploadStorageDirectoryErr }}</li>
+                </ul>
+                {{ end }}
+                {{ if .BodyData.UploadStorageDirectory }}
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><b>Status:</b> <i class="bi bi-check-circle-fill" style="color: green"></i> Directory Writeable!</li>
+                    <li class="list-group-item"><b>Directory:</b> {{ .BodyData.UploadStorageDirectory }}</li>
+                </ul>
+                {{ end }}
+            </div>
+        </div>
+    </div>
 </div>
 {{template "footer" .}}

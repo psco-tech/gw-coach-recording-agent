@@ -3,22 +3,23 @@ package uploader
 import (
 	"encoding/json"
 	"errors"
+	"github.com/psco-tech/gw-coach-recording-agent/models"
 	"log"
 	"net/http"
 	"strings"
 )
 
 type AppConnect struct {
-	AgentToken 	string
-	Host 		string
-	client 		*http.Client
+	AgentToken string
+	Host       string
+	client     *http.Client
 }
 
 func NewAppConnect(agentToken string, host string) *AppConnect {
 	return &AppConnect{
-		client:      &http.Client{},
+		client:     &http.Client{},
 		AgentToken: agentToken,
-		Host: host,
+		Host:       host,
 	}
 }
 
@@ -30,11 +31,11 @@ func (a *AppConnect) makeRequest(path string, method string, body interface{}, r
 			return err
 		}
 		reqBodyReader = strings.NewReader(string(reqBody))
-	}else {
+	} else {
 		reqBodyReader = strings.NewReader("")
 	}
 
-	req, err := http.NewRequest(method, a.Host +path, reqBodyReader)
+	req, err := http.NewRequest(method, a.Host+path, reqBodyReader)
 	if err != nil {
 		return err
 	}
@@ -75,12 +76,14 @@ func (a *AppConnect) Info() (AgentInfo, error) {
 	return info, err
 }
 
-func (a *AppConnect) GetTempUpload(upload TempUploadUrlRequest) (TempUploadUrlResponse, error){
+func (a *AppConnect) GetTempUpload(upload TempUploadUrlRequest) (TempUploadUrlResponse, error) {
 	var resp TempUploadUrlResponse
-	err := a.makeRequest("/u/agent/info", "GET", upload, &resp)
+	err := a.makeRequest("/u/agent/temp", "POST", upload, &resp)
 	return resp, err
 }
 
-func (a *AppConnect) FinalizeUpload(){
-
+func (a *AppConnect) FinalizeCFSUpload(objectKey string, cfs models.CFSAudio) (models.CFSAudio, error) {
+	var resp models.CFSAudio
+	err := a.makeRequest("/u/agent/upload/cfsaudio/"+objectKey, "POST", cfs, &resp)
+	return resp, err
 }

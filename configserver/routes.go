@@ -1,7 +1,5 @@
 package configserver
 
-
-
 import (
 	"fmt"
 	"github.com/psco-tech/gw-coach-recording-agent/uploader"
@@ -13,8 +11,10 @@ import (
 )
 
 type AppOverview struct {
-	AgentInfo uploader.AgentInfo
-	AgentInfoErr string
+	AgentInfo                 uploader.AgentInfo
+	AgentInfoErr              string
+	UploadStorageDirectory    string
+	UploadStorageDirectoryErr string
 }
 
 type YTUpload struct {
@@ -44,7 +44,7 @@ func Start() {
 
 	appConfigPost := func(c *fiber.Ctx) error {
 		var parsedConfig models.AppConfig
-		appConfig, err  := database.GetAppConfig()
+		appConfig, err := database.GetAppConfig()
 		if err != nil {
 			log.Printf("Could not get app Config: %s", err.Error())
 			appConfig = *new(models.AppConfig)
@@ -65,7 +65,7 @@ func Start() {
 	app.Post("/app", appConfigPost)
 
 	overview := func(c *fiber.Ctx) error {
-		appConfig, err  := database.GetAppConfig()
+		appConfig, err := database.GetAppConfig()
 		if err != nil {
 			log.Printf("Could not get app Config: %s", err.Error())
 			appConfig = *new(models.AppConfig)
@@ -81,6 +81,13 @@ func Start() {
 			overview.AgentInfo = agentInfo
 		}
 
+		uploadDir, upDirErr := uploader.GetUploadsDirectory()
+		if upDirErr != nil {
+			overview.UploadStorageDirectoryErr = upDirErr.Error()
+		} else {
+			overview.UploadStorageDirectory = uploadDir
+		}
+
 		return render(c.Response().BodyWriter(), "overview.html", "/", overview)
 	}
 	app.Get("/overview", overview)
@@ -92,7 +99,7 @@ func Start() {
 	})
 
 	app.Get("/app", func(c *fiber.Ctx) error {
-		appConfig, err  := database.GetAppConfig()
+		appConfig, err := database.GetAppConfig()
 		if err != nil {
 			log.Printf("Could not get app Config: %s", err.Error())
 			appConfig = *new(models.AppConfig)
@@ -101,7 +108,7 @@ func Start() {
 	})
 
 	app.Post("/connection", func(c *fiber.Ctx) error {
-		pbxConn, err  := database.GetPBXConnectionCredentials()
+		pbxConn, err := database.GetPBXConnectionCredentials()
 		if err != nil {
 			log.Printf("Could not get PBX connection credentials: %s", err.Error())
 			pbxConn = *new(models.PBXConnectionCredentials)
@@ -195,8 +202,21 @@ func Start() {
 		ur.Status = models.UploadStatusQueued
 		ur.ContentType = "video/mp4"
 		ur.FilePath = outputFile
+		ur.Type = models.UploadRecordTypeCFS
 		database.Save(&ur)
 
+		cha := uploader.GetUploadRecordChannel()
+
+		cha <- ur
+
+		return c.Redirect("/uploads")
+	})
+
+	app.Post("/uploads/:recordId/retry", func(c *fiber.Ctx) error {
+		var recId, _ = strconv.Atoi(c.Params("recordId"))
+		ur := database.GetUploadRecordById(recId)
+		cha := uploader.GetUploadRecordChannel()
+		cha <- ur
 		return c.Redirect("/uploads")
 	})
 
@@ -218,7 +238,7 @@ func appConfigExistsMiddleware(db *models.DB) fiber.Handler {
 			return c.Redirect("/init")
 		}
 
-		if(appConfig.AgentToken == "") {
+		if appConfig.AgentToken == "" {
 			return c.Redirect("/init")
 		}
 

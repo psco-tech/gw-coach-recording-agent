@@ -6,19 +6,29 @@
             <table class="table mt-3">
                 <thead>
                     <tr>
+                        <th scope="col">Type</th>
                         <th scope="col">File</th>
                         <th scope="col">Content Type</th>
                         <th scope="col">Status</th>
                         <th scope="col">Time</th>
+                        <th scope="col">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                 {{ range .BodyData }}
                 <tr>
+                    <td>{{ .Type }}</td>
                     <td>{{ .FilePath }}</td>
                     <td>{{ .ContentType }}</td>
                     <td>{{ .Status }}</td>
                     <td>{{ .CreatedAt }}</td>
+                    <td>
+                        {{ if ne .Status "UPLOAD_FINALIZED" }}
+                        <form action="/uploads/{{ .ID }}/retry" method="post">
+                            <input type="submit" class="btn btn-primary" value="Upload">
+                        </form>
+                        {{ end }}
+                    </td>
                 </tr>
                 {{ end }}
                 </tbody>

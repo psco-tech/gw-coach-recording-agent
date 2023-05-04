@@ -85,6 +85,12 @@ func (db *DB) GetRecentUploads() ([]UploadRecord, error) {
 	return records, err
 }
 
+func (db *DB) GetUploadRecordById(deviceId int) UploadRecord {
+	var record UploadRecord
+	db.gormDB.Where("id = ?", deviceId).First(&record)
+	return record
+}
+
 func (db *DB) Save(value interface{}) (tx *gorm.DB) {
 	return db.gormDB.Save(value)
 }

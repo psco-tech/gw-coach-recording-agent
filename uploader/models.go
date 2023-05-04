@@ -16,7 +16,6 @@ type TempUploadUrlResponse struct {
 }
 
 type TempUploadUrlRequest struct {
-	Key string `json:"key"`
+	Filename string `json:"filename"`
 	ContentType string `json:"contentType"`
-	Extension string `json:"extension"`
 }
