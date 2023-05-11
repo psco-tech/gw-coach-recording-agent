@@ -3,7 +3,6 @@ package uploader
 import (
 	"bytes"
 	"fmt"
-	"github.com/psco-tech/gw-coach-recording-agent/models"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -12,6 +11,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/psco-tech/gw-coach-recording-agent/models"
 )
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -113,7 +114,7 @@ func uploader(uploadRecords chan models.UploadRecord) {
 		}
 
 		switch ur.Type {
-		case models.UploadRecordTypeCFS:
+		case models.UploadRecordTypeCFS_AUDIO:
 			var cfsAudio = *new(models.CFSAudio)
 			cfsAudio.CallId = fmt.Sprintf("%d", ur.ID)
 			cfsAudio, err := appConnect.FinalizeCFSUpload(tempUploadResponse.ObjectKey, cfsAudio)

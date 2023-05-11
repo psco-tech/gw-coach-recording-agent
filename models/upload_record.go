@@ -7,16 +7,16 @@ type UploadStatus string
 type UploadRecordType string
 
 const (
-	UploadStatusQueued   UploadStatus = "QUEUED"
-	UploadStatusStarting   UploadStatus = "UPLOAD_STARTING"
-	UploadStatusUploading   UploadStatus = "UPLOADING"
+	UploadStatusQueued            UploadStatus = "QUEUED"
+	UploadStatusStarting          UploadStatus = "UPLOAD_STARTING"
+	UploadStatusUploading         UploadStatus = "UPLOADING"
 	UploadStatusUploadTransferred UploadStatus = "UPLOAD_TRANSFERRED"
-	UploadStatusUploadFinalized  UploadStatus = "UPLOAD_FINALIZED"
+	UploadStatusUploadFinalized   UploadStatus = "UPLOAD_FINALIZED"
 )
 
 const (
-	UploadRecordTypeCFS UploadRecordType = "CFS"
-	UploadRecordTypeCAD UploadRecordType = "CAD"
+	UploadRecordTypeCFS_AUDIO UploadRecordType = "CFS_AUDIO"
+	UploadRecordTypeCAD       UploadRecordType = "CAD"
 )
 
 type UploadRecord struct {
