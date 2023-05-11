@@ -1,6 +1,10 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type UploadStatus string
 
@@ -29,6 +33,8 @@ type UploadRecord struct {
 	ContentType string
 
 	Details string
+	Begin   time.Time
+	End     time.Time
 
 	Type UploadRecordType
 }

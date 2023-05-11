@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"time"
 
 	"github.com/go-audio/audio"
 	"github.com/go-audio/wav"
@@ -82,6 +83,7 @@ func (r *passiveRecorder) ListenAndRecord(ctx context.Context) error {
 						log.Printf("Call initiated: %s\n", sip.GetCallID())
 						r.calls[sip.GetCallID()] = &sipCall{
 							Invite: sip,
+							Begin:  time.Now(),
 						}
 					}
 				}
@@ -93,6 +95,7 @@ func (r *passiveRecorder) ListenAndRecord(ctx context.Context) error {
 			case layers.SIPMethodBye:
 				if call, ok := r.calls[sip.GetCallID()]; ok {
 					delete(r.calls, sip.GetCallID())
+					call.End = time.Now()
 					log.Printf("\n\nCall cleared: %s\n%+v\n\n", sip.GetCallID(), call)
 					call.Recorder.Close()
 
@@ -103,6 +106,8 @@ func (r *passiveRecorder) ListenAndRecord(ctx context.Context) error {
 							Type:        models.UploadRecordTypeCFS_AUDIO,
 							ContentType: "audio/wav",
 							Details:     string(call.Invite.Contents),
+							Begin:       call.Begin,
+							End:         call.End,
 						}
 					}()
 				}
@@ -192,6 +197,9 @@ type sipCall struct {
 	ToCallee rtpFlow
 
 	Recorder *multichannelRecorder
+
+	Begin time.Time
+	End   time.Time
 }
 
 func newRecorder(file *os.File, channels int) *multichannelRecorder {
