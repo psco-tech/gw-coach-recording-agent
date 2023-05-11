@@ -8,7 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/gopacket/pcap"
 	"github.com/judwhite/go-svc"
+	"github.com/psco-tech/gw-coach-recording-agent/passive_monitoring"
 	"github.com/psco-tech/gw-coach-recording-agent/pbx"
 	"github.com/psco-tech/gw-coach-recording-agent/pbx/avaya"
 	"github.com/psco-tech/gw-coach-recording-agent/pbx/osbiz"
@@ -47,6 +49,8 @@ type callRecordingAgentService struct {
 
 	recorderPool rtp.RecorderPool
 	pbx          pbx.PBX
+
+	passiveRecorder passive_monitoring.Recorder
 }
 
 func (c *callRecordingAgentService) Init(env svc.Environment) error {
@@ -57,41 +61,68 @@ func (c *callRecordingAgentService) Init(env svc.Environment) error {
 		return fmt.Errorf("failed to register PBX implementations: %w", err)
 	}
 
-	// Create the recorder pool
-	c.recorderPool, err = rtp.NewRecorderPool(viper.GetUint("rtp.recorder_count"), c.ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create the recorder pool: %w", err)
-	}
+	pbxType := viper.GetString("pbx_type")
 
-	// Instantiate the PBX connection
-	c.pbx, err = pbx.New(viper.GetString("pbx_type"), c.ctx)
-	if err != nil {
-		return fmt.Errorf("failed to instantiate PBX implementation: %w", err)
+	if pbxType == passive_monitoring.PBXType {
+		handle, err := pcap.OpenLive(viper.GetString("passive_monitoring.interface_name"), viper.GetInt32("passive_monitoring.mtu_size"), true, pcap.BlockForever)
+		if err != nil {
+			return fmt.Errorf("failed to open interface for listening: %s", err)
+		}
+
+		c.passiveRecorder, err = passive_monitoring.NewPassiveRecorder(handle)
+		if err != nil {
+			return fmt.Errorf("failed to setup recorder: %s", err)
+		}
+	} else {
+		// Create the recorder pool
+		c.recorderPool, err = rtp.NewRecorderPool(viper.GetUint("rtp.recorder_count"), c.ctx)
+		if err != nil {
+			return fmt.Errorf("failed to create the recorder pool: %w", err)
+		}
+
+		// Instantiate the PBX connection
+
+		c.pbx, err = pbx.New(pbxType, c.ctx)
+		if err != nil {
+			return fmt.Errorf("failed to instantiate PBX implementation: %w", err)
+		}
 	}
 
 	return nil
 }
 
 func (c *callRecordingAgentService) Start() error {
-	// Start the RecorderPool first so the PBX will never request from it without it running
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
-		err := c.recorderPool.Start()
-		if err != nil {
-			log.Printf("Recorder pool error: %s\n", err)
-		}
-	}()
+	pbxType := viper.GetString("pbx_type")
+	if pbxType == passive_monitoring.PBXType {
+		c.wg.Add(1)
+		go func() {
+			defer c.wg.Done()
+			err := c.passiveRecorder.ListenAndRecord(c.ctx)
+			if err != nil {
+				log.Printf("Passive recorder error: %s\n", err)
+			}
+		}()
+	} else {
+		// Start the RecorderPool first so the PBX will never request from it without it running
+		c.wg.Add(1)
+		go func() {
+			defer c.wg.Done()
+			err := c.recorderPool.Start()
+			if err != nil {
+				log.Printf("Recorder pool error: %s\n", err)
+			}
+		}()
 
-	// Connect to the PBX
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
-		err := c.reestablishPBXConnection()
-		if err != nil {
-			log.Printf("Recorder pool error: %s\n", err)
-		}
-	}()
+		// Connect to the PBX
+		c.wg.Add(1)
+		go func() {
+			defer c.wg.Done()
+			err := c.reestablishPBXConnection()
+			if err != nil {
+				log.Printf("Recorder pool error: %s\n", err)
+			}
+		}()
+	}
 
 	return nil
 }
