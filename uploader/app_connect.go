@@ -3,10 +3,11 @@ package uploader
 import (
 	"encoding/json"
 	"errors"
-	"github.com/psco-tech/gw-coach-recording-agent/models"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/psco-tech/gw-coach-recording-agent/models"
 )
 
 type AppConnect struct {

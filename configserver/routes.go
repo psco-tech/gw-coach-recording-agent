@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/gopacket/pcap"
 	"github.com/psco-tech/gw-coach-recording-agent/uploader"
+	"github.com/spf13/viper"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/psco-tech/gw-coach-recording-agent/models"
@@ -78,8 +79,8 @@ func Start() {
 			log.Printf("Could not get app Config: %s", err.Error())
 			appConfig = *new(models.AppConfig)
 		}
-
-		appConnect := uploader.NewAppConnect(appConfig.AgentToken, "http://127.0.0.1:8080")
+		viper.SetDefault("app_connect_host", "http://127.0.0.1:8080")
+		appConnect := uploader.NewAppConnect(appConfig.AgentToken, viper.GetString("app_connect_host"))
 		agentInfo, aeErr := appConnect.Info()
 
 		var overview = *new(AppOverview)

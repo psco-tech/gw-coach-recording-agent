@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/psco-tech/gw-coach-recording-agent/models"
+	"github.com/spf13/viper"
 )
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -54,7 +55,7 @@ func uploader(uploadRecords chan models.UploadRecord) {
 			continue
 		}
 
-		appConnect := NewAppConnect(appConfig.AgentToken, "http://127.0.0.1:8080")
+		appConnect := NewAppConnect(appConfig.AgentToken, viper.GetString("app_connect_host"))
 
 		filename := filepath.Base(ur.FilePath)
 
