@@ -2,9 +2,10 @@ package configserver
 
 import (
 	"fmt"
-	"github.com/psco-tech/gw-coach-recording-agent/uploader"
 	"log"
 	"strconv"
+
+	"github.com/psco-tech/gw-coach-recording-agent/uploader"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/psco-tech/gw-coach-recording-agent/models"
@@ -25,7 +26,7 @@ func Start() {
 	app := fiber.New(fiber.Config{})
 	database, err := models.NewDatabase()
 	if err != nil {
-		log.Fatalf("Could not connect to DB: #{err}", err)
+		log.Fatalf("Could not connect to DB: %s", err)
 	}
 
 	app.Use(appConfigExistsMiddleware(database))
@@ -202,7 +203,7 @@ func Start() {
 		ur.Status = models.UploadStatusQueued
 		ur.ContentType = "video/mp4"
 		ur.FilePath = outputFile
-		ur.Type = models.UploadRecordTypeCFS
+		ur.Type = models.UploadRecordTypeCFS_AUDIO
 		database.Save(&ur)
 
 		cha := uploader.GetUploadRecordChannel()
