@@ -102,11 +102,8 @@ func (r *passiveRecorder) ListenAndRecord(ctx context.Context) error {
 							FilePath:    call.Recorder.File.Name(),
 							Type:        models.UploadRecordTypeCFS_AUDIO,
 							ContentType: "audio/wav",
+							Details:     string(call.Invite.Contents),
 						}
-
-						// TODO this is a stub, create metadata file here
-						invite := string(call.Invite.Contents)
-						log.Printf("Original Invite: %s", invite)
 					}()
 				}
 			}

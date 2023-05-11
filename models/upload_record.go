@@ -28,5 +28,7 @@ type UploadRecord struct {
 
 	ContentType string
 
+	Details string
+
 	Type UploadRecordType
 }
