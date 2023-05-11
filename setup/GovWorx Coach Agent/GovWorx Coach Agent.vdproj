@@ -90,7 +90,7 @@
         {
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7218503234CA4618A741BF2F08E431DB"
             {
-            "SourcePath" = "8:..\\..\\call_recording\\gw-coach-recording-agent.exe"
+            "SourcePath" = "8:..\\gw-coach-recording-agent.exe"
             "TargetName" = "8:gw-coach-recording-agent.exe"
             "Tag" = "8:"
             "Folder" = "8:_6B5FFCA87EE841DF88AD983D31CEC837"
