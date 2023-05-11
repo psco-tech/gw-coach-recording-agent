@@ -10,23 +10,29 @@ import (
 
 	"github.com/google/gopacket/pcap"
 	"github.com/judwhite/go-svc"
+	"github.com/psco-tech/gw-coach-recording-agent/configserver"
 	"github.com/psco-tech/gw-coach-recording-agent/passive_monitoring"
 	"github.com/psco-tech/gw-coach-recording-agent/pbx"
 	"github.com/psco-tech/gw-coach-recording-agent/pbx/avaya"
 	"github.com/psco-tech/gw-coach-recording-agent/pbx/osbiz"
 	"github.com/psco-tech/gw-coach-recording-agent/rtp"
+	"github.com/psco-tech/gw-coach-recording-agent/uploader"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 func init() {
 	cobra.OnInitialize(readInConfiguration)
+	rootCmd.AddCommand(installCmd)
 }
 
 var rootCmd = &cobra.Command{
 	Use:   "cra",
 	Short: "CRA is a call recording agent",
 	Run: func(cmd *cobra.Command, args []string) {
+		configserver.Start()
+		uploader.Start()
+
 		craService := &callRecordingAgentService{}
 
 		if err := svc.Run(craService); err != nil {
@@ -36,6 +42,7 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() {
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
