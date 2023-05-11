@@ -5,6 +5,7 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/google/gopacket/pcap"
 	"github.com/psco-tech/gw-coach-recording-agent/uploader"
 
 	"github.com/gofiber/fiber/v2"
@@ -20,6 +21,12 @@ type AppOverview struct {
 
 type YTUpload struct {
 	YoutubeLink string
+}
+
+type NetworkInterface struct {
+	Name        string
+	Description string
+	Addresses   []string
 }
 
 func Start() {
@@ -219,6 +226,45 @@ func Start() {
 		cha := uploader.GetUploadRecordChannel()
 		cha <- ur
 		return c.Redirect("/uploads")
+	})
+
+	app.Get("/interfaces", func(c *fiber.Ctx) error {
+		devices, err := pcap.FindAllDevs()
+		if err != nil {
+			return err
+		}
+
+		interfaces := make([]NetworkInterface, 0)
+
+		for _, device := range devices {
+			if device.Flags&0x01 == 0x01 {
+				// exclude loopback
+				continue
+			}
+			if device.Flags&0x08 == 0x08 {
+				// exclude wireless devices
+				continue
+			}
+
+			if device.Flags&0x02 != 0x02 {
+				// exclude devices that are not up
+				continue
+			}
+
+			iface := NetworkInterface{
+				Name:        device.Name,
+				Description: device.Description,
+				Addresses:   make([]string, 0),
+			}
+
+			for _, a := range device.Addresses {
+				iface.Addresses = append(iface.Addresses, a.IP.String())
+			}
+
+			interfaces = append(interfaces, iface)
+		}
+
+		return c.JSON(interfaces)
 	})
 
 	go func() {
