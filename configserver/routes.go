@@ -30,6 +30,12 @@ type NetworkInterface struct {
 	Addresses   []string
 }
 
+type ConnectAudioForm struct {
+	NetworkInterfaces          []NetworkInterface
+	MTU                        int
+	ActiveNetworkInterfaceName string
+}
+
 func Start() {
 	app := fiber.New(fiber.Config{})
 	database, err := models.NewDatabase()
@@ -102,9 +108,9 @@ func Start() {
 	app.Get("/overview", overview)
 	app.Get("/", overview)
 
-	app.Get("/connection", func(c *fiber.Ctx) error {
+	app.Get("/avaya-pbx-connect", func(c *fiber.Ctx) error {
 		pbxConn, _ := database.GetPBXConnectionCredentials()
-		return render(c.Response().BodyWriter(), "connect.html", "/connection", pbxConn)
+		return render(c.Response().BodyWriter(), "avaya-pbx-connect.html", "/connection", pbxConn)
 	})
 
 	app.Get("/app", func(c *fiber.Ctx) error {
@@ -116,7 +122,7 @@ func Start() {
 		return render(c.Response().BodyWriter(), "app-config.html", "/app", appConfig)
 	})
 
-	app.Post("/connection", func(c *fiber.Ctx) error {
+	app.Post("/avaya-pbx-connect", func(c *fiber.Ctx) error {
 		pbxConn, err := database.GetPBXConnectionCredentials()
 		if err != nil {
 			log.Printf("Could not get PBX connection credentials: %s", err.Error())
@@ -125,12 +131,12 @@ func Start() {
 
 		if err := c.BodyParser(&pbxConn); err != nil {
 			log.Printf("Could not parse PBX connection credentials from body: %s", err.Error())
-			return renderWithError(c.Response().BodyWriter(), "connect.html", "/connection", pbxConn, fmt.Sprintf("Could not save connection: %s", err.Error()))
+			return renderWithError(c.Response().BodyWriter(), "avaya-pbx-connect.html", "/connection", pbxConn, fmt.Sprintf("Could not save connection: %s", err.Error()))
 		}
 		log.Printf("Parse creds: %s", pbxConn)
 		database.Save(&pbxConn)
 
-		return render(c.Response().BodyWriter(), "connect.html", "/connection", pbxConn)
+		return render(c.Response().BodyWriter(), "avaya-pbx-connect.html", "/connection", pbxConn)
 	})
 
 	app.Get("/devices", func(c *fiber.Ctx) error {
@@ -229,48 +235,90 @@ func Start() {
 		return c.Redirect("/uploads")
 	})
 
-	app.Get("/interfaces", func(c *fiber.Ctx) error {
-		devices, err := pcap.FindAllDevs()
+	app.Get("/connect-audio", func(c *fiber.Ctx) error {
+
+		connectAudioConfig, err := database.GetPassiveMonitoringConfig()
 		if err != nil {
-			return err
+			log.Printf("Could not load audio connection config: %s", err.Error())
 		}
 
-		interfaces := make([]NetworkInterface, 0)
+		formBody := new(ConnectAudioForm)
+		if connectAudioConfig.MTU != 0 {
+			formBody.MTU = connectAudioConfig.MTU
+		} else {
+			formBody.MTU = 1500
+		}
+		formBody.NetworkInterfaces = loadNetworkInterfaces()
 
-		for _, device := range devices {
-			if device.Flags&0x01 == 0x01 {
-				// exclude loopback
-				continue
-			}
-			if device.Flags&0x08 == 0x08 {
-				// exclude wireless devices
-				continue
-			}
-
-			if device.Flags&0x02 != 0x02 {
-				// exclude devices that are not up
-				continue
-			}
-
-			iface := NetworkInterface{
-				Name:        device.Name,
-				Description: device.Description,
-				Addresses:   make([]string, 0),
-			}
-
-			for _, a := range device.Addresses {
-				iface.Addresses = append(iface.Addresses, a.IP.String())
-			}
-
-			interfaces = append(interfaces, iface)
+		if connectAudioConfig.NetworkInterfaceName != "" {
+			formBody.ActiveNetworkInterfaceName = connectAudioConfig.NetworkInterfaceName
+		} else {
+			formBody.ActiveNetworkInterfaceName = ""
 		}
 
-		return c.JSON(interfaces)
+		return render(c.Response().BodyWriter(), "connect-audio.html", "/connect-audio", formBody)
+	})
+
+	app.Post("/connect-audio", func(c *fiber.Ctx) error {
+
+		var parsedConfig models.PassiveMonitoringConfig
+		config, err := database.GetPassiveMonitoringConfig()
+		if err != nil {
+			log.Printf("Could not get connect audio Config: %s", err.Error())
+			config = *new(models.PassiveMonitoringConfig)
+		}
+
+		if err := c.BodyParser(&parsedConfig); err != nil {
+			log.Printf("Could not parse app config from body: %s", err.Error())
+			return renderWithError(c.Response().BodyWriter(), "connect-audio.html", "/connect-audio", nil, fmt.Sprintf("Could not save configs: %s", err.Error()))
+		}
+		// Only update the token - if there are other configs we don't want to blow it out
+		config.MTU = parsedConfig.MTU
+		config.NetworkInterfaceName = parsedConfig.NetworkInterfaceName
+		database.Save(&config)
+		return c.Redirect("/connect-audio")
 	})
 
 	go func() {
 		log.Fatal(app.Listen(":3002"))
 	}()
+}
+
+func loadNetworkInterfaces() []NetworkInterface {
+	interfaces := make([]NetworkInterface, 0)
+	devices, err := pcap.FindAllDevs()
+	if err != nil {
+		return interfaces
+	}
+
+	for _, device := range devices {
+		if device.Flags&0x01 == 0x01 {
+			// exclude loopback
+			continue
+		}
+		if device.Flags&0x08 == 0x08 {
+			// exclude wireless devices
+			continue
+		}
+
+		if device.Flags&0x02 != 0x02 {
+			// exclude devices that are not up
+			continue
+		}
+
+		iface := NetworkInterface{
+			Name:        device.Name,
+			Description: device.Description,
+			Addresses:   make([]string, 0),
+		}
+
+		for _, a := range device.Addresses {
+			iface.Addresses = append(iface.Addresses, a.IP.String())
+		}
+
+		interfaces = append(interfaces, iface)
+	}
+	return interfaces
 }
 
 func appConfigExistsMiddleware(db *models.DB) fiber.Handler {

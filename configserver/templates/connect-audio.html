@@ -1,0 +1,25 @@
+{{template "header" .}}
+<div class="container">
+    <div class="row">
+        <div class="col-md-6 offset-md-3 mt-5">
+            <h1 class="mb-4">Connect Audio</h1>
+            <form action="/connect-audio" method="post">
+                <div class="mb-3">
+                    <label for="MTU" class="form-label">MTU:</label>
+                    <input type="text" value="{{.BodyData.MTU}}" class="form-control" id="MTU" name="MTU" required>
+                </div>
+                <div class="mb-3">
+                    <label for="NetworkInterfaceName" class="form-label">Network Interface:</label>
+                    <select class="custom-select" id="NetworkInterfaceName" name="NetworkInterfaceName">
+                        {{range .BodyData.NetworkInterfaces}}
+                            <option value="{{.Name}}" {{if eq .Name $.BodyData.ActiveNetworkInterfaceName}}selected{{end}}>{{.Name}}</option>
+                        {{end}}
+                    </select>
+                </div>
+                <input type="submit" class="btn btn-primary" value="Submit">
+            </form>
+        </div>
+    </div>
+</div>
+{{template "footer" .}}
+

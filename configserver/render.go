@@ -7,15 +7,15 @@ import (
 )
 
 type LayoutData struct {
-	NavItems []NavItem
+	NavItems      []NavItem
 	ActiveNavItem NavItem
-	BodyData any
-	ErrorMsg string
+	BodyData      any
+	ErrorMsg      string
 }
 
 type NavItem struct {
-	Path string
-	Title string
+	Path      string
+	Title     string
 	IconClass string
 }
 
@@ -23,8 +23,8 @@ var navItems = []NavItem{
 	{Path: "/", Title: "Overview", IconClass: "bi-house"},
 	{Path: "/app", Title: "App Config", IconClass: "bi-cloud"},
 	{Path: "/uploads", Title: "Data Uploads", IconClass: "bi-cloud-upload"},
-	{Path: "/connection", Title: "Connect PBX", IconClass: "bi-hdd-stack"},
-	{Path: "/devices", Title: "Devices", IconClass: "bi-telephone"},
+	{Path: "/connect-audio", Title: "Connect Audio", IconClass: "bi-telephone"},
+	//{Path: "/devices", Title: "Devices", IconClass: ""},
 }
 
 func renderWithError(wr io.Writer, templateName string, activePath string, data any, err string) error {
@@ -40,10 +40,10 @@ func renderWithError(wr io.Writer, templateName string, activePath string, data 
 	}
 
 	data = LayoutData{
-		NavItems:            navItems,
-		ActiveNavItem:   	 activeNavItem,
-		BodyData:            data,
-		ErrorMsg:            err,
+		NavItems:      navItems,
+		ActiveNavItem: activeNavItem,
+		BodyData:      data,
+		ErrorMsg:      err,
 	}
 
 	log.Default().Printf("Rendering template %s with data %v", templateName, data)
