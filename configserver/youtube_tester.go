@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 func DownloadYouTubeVideo(videoURL string, outputDir string) (string, error) {
@@ -16,7 +17,7 @@ func DownloadYouTubeVideo(videoURL string, outputDir string) (string, error) {
 	videoID, _ := youtube.ExtractVideoID(videoURL)
 	video, err := client.GetVideo(videoID)
 	if err != nil {
-		return  "", fmt.Errorf("get video: %v", err)
+		return "", fmt.Errorf("get video: %v", err)
 	}
 
 	format = *getSmallestFileSizeFormat(video.Formats)
@@ -26,7 +27,12 @@ func DownloadYouTubeVideo(videoURL string, outputDir string) (string, error) {
 		return "", fmt.Errorf("get stream: %v", err)
 	}
 
-	outputFilePath := filepath.Join(outputDir, video.Title+".mp4")
+	cleanTitle := video.Title
+	cleanTitle = strings.ReplaceAll(cleanTitle, " ", "")
+	cleanTitle = strings.ReplaceAll(cleanTitle, "-", "")
+	cleanTitle = strings.ReplaceAll(cleanTitle, "–", "")
+	cleanTitle = strings.ReplaceAll(cleanTitle, ",", "")
+	outputFilePath := filepath.Join(outputDir, cleanTitle+".mp4")
 	outputFile, err := os.Create(outputFilePath)
 	if err != nil {
 		return "", fmt.Errorf("create output file: %v", err)
@@ -41,7 +47,6 @@ func DownloadYouTubeVideo(videoURL string, outputDir string) (string, error) {
 	fmt.Printf("Video saved to %s\n", outputFilePath)
 	return outputFilePath, nil
 }
-
 
 func getSmallestFileSizeFormat(formats []youtube.Format) *youtube.Format {
 	if len(formats) == 0 {

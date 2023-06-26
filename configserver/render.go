@@ -24,6 +24,7 @@ var navItems = []NavItem{
 	{Path: "/app", Title: "App Config", IconClass: "bi-cloud"},
 	{Path: "/uploads", Title: "Data Uploads", IconClass: "bi-cloud-upload"},
 	{Path: "/connect-audio", Title: "Connect Audio", IconClass: "bi-telephone"},
+	{Path: "/cad", Title: "CAD", IconClass: "bi-database"},
 	//{Path: "/devices", Title: "Devices", IconClass: ""},
 }
 

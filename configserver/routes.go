@@ -113,6 +113,10 @@ func Start() {
 		return render(c.Response().BodyWriter(), "avaya-pbx-connect.html", "/connection", pbxConn)
 	})
 
+	app.Get("/cad", func(c *fiber.Ctx) error {
+		return render(c.Response().BodyWriter(), "cad.html", "/cad", nil)
+	})
+
 	app.Get("/app", func(c *fiber.Ctx) error {
 		appConfig, err := database.GetAppConfig()
 		if err != nil {
