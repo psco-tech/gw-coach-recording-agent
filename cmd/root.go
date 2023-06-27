@@ -27,17 +27,17 @@ func init() {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "cra",
-	Short: "CRA is a call recording agent",
+	Use:   "govworx",
+	Short: "GovWorx Data Agent",
 	Run: func(cmd *cobra.Command, args []string) {
 		configserver.Start()
 		uploader.Start()
 
-		craService := &callRecordingAgentService{}
-
-		if err := svc.Run(craService); err != nil {
-			log.Fatal(err)
-		}
+		//craService := &callRecordingAgentService{}
+		//
+		//if err := svc.Run(craService); err != nil {
+		//	log.Fatal(err)
+		//}
 	},
 }
 

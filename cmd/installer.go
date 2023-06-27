@@ -21,6 +21,7 @@ var logger service.Logger
 type program struct{}
 
 func (p program) Start(s service.Service) error {
+	fmt.Println("Starting the service")
 	go p.run()
 	return nil
 }
@@ -47,16 +48,19 @@ func logsDir() (string, error) {
 func (p *program) run() {
 
 	executablePath, err := os.Executable()
+	fmt.Println("Executable path: " + executablePath)
 	c := *exec.Command(executablePath)
 	if err != nil {
 		fmt.Println("Error getting executable path: %v", err.Error())
 	}
 
+	fmt.Println("Executable path: " + c.Path)
+
 	logdir, err := logsDir()
 	if err != nil {
 		fmt.Println("Error opening logdir: %v", err.Error())
 	}
-
+	fmt.Println("Logdir: " + logdir)
 	f, err := os.OpenFile(filepath.Join(logdir, "gw-error_log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
 	if err != nil {
 		logger.Warningf("Failed to open std err log: %v", err)
@@ -73,7 +77,7 @@ func (p *program) run() {
 	defer f.Close()
 	c.Stdout = outf
 
-	c.Run()
+	err = c.Run()
 	if err != nil {
 		fmt.Println("Error running: %v", err.Error())
 	}
@@ -94,6 +98,9 @@ var installCmd = &cobra.Command{
 			DisplayName: serviceName,
 			Description: serviceDescription,
 		}
+
+		fmt.Println("Registering the service")
+
 		prg := &program{}
 		s, err := service.New(prg, serviceConfig)
 		if err != nil {
